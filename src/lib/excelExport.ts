@@ -174,3 +174,96 @@ export const exportToExcelWithLogo = async (processedData: any[]) => {
   // Add unique timestamp so consecutive downloads dont override silently in some OSs
   saveAs(blob, `Pegasus_Raporu_${new Date().getTime().toString().slice(-6)}.xlsx`);
 };
+
+export const exportCrewDelayWithLogo = async (filteredFlights: any[], supervisors: Record<string, string>) => {
+  if (!filteredFlights || filteredFlights.length === 0) {
+      alert("Dışa aktarılacak veri bulunamadı.");
+      return;
+  }
+
+  const workbook = new ExcelJS.Workbook();
+  const worksheet = workbook.addWorksheet('Ekip Gecikmeleri');
+
+  // Generate Base64 Watermark 
+  const base64Image = generatePegasusWatermarkBase64();
+  let watermarkId: number | null = null;
+  
+  if (base64Image) {
+      watermarkId = workbook.addImage({
+          base64: base64Image,
+          extension: 'png',
+      });
+  }
+
+  // Set Background Watermark
+  if (watermarkId !== null) {
+      worksheet.addBackgroundImage(watermarkId);
+  }
+
+  // Formal grid line style
+  const thinBorder: Partial<ExcelJS.Borders> = {
+    top: { style: 'thin', color: { argb: 'FF808080' } },
+    left: { style: 'thin', color: { argb: 'FF808080' } },
+    bottom: { style: 'thin', color: { argb: 'FF808080' } },
+    right: { style: 'thin', color: { argb: 'FF808080' } }
+  };
+
+  worksheet.addRow([]);
+  const titleRow = worksheet.addRow(["EKİP GECİKME ANALİZİ - CREW DELAY REPORT"]);
+  titleRow.font = { size: 16, bold: true, color: { argb: 'FFD52B1E' } }; // Pegasus Red
+  worksheet.addRow([]);
+
+  const headers = ["Uçuş", "Tarih", "Kalkış", "Varış", "STD (UTC)", "ATD (UTC)", "Gecikme (dk)", "Gecikme Kodu", "Vardiya", "Vardiya Şefi", "CREW TRACKING REMARKS"];
+  const headerRow = worksheet.addRow(headers);
+  
+  headerRow.eachCell((cell) => {
+    cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1F4E79' } };
+    cell.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+    cell.border = thinBorder;
+    cell.alignment = { vertical: 'middle', horizontal: 'center' };
+  });
+
+  filteredFlights.forEach((f, index) => {
+    const dataRow = worksheet.addRow([
+      f.flightNumber, f.date, f.departureAirport, f.arrivalAirport, f.std, f.atd, f.delayMinutes, f.delayCode, f.shift, supervisors[f.shift] || '', f.crewComment
+    ]);
+    
+    const isEven = index % 2 === 0;
+    
+    dataRow.eachCell((cell, colNumber) => {
+        cell.border = thinBorder;
+        cell.font = { name: 'Calibri', size: 11, color: { argb: 'FF000000'} };
+
+        // Even rows transparent for watermark, Odd rows AliceBlue
+        if (!isEven) {
+             cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFEBF5FB' } };
+        }
+
+        // Align center for standard columns
+        if ([1, 2, 3, 4, 5, 6, 7, 8, 9].includes(colNumber)) {
+            cell.alignment = { vertical: 'middle', horizontal: 'center' };
+        }
+    });
+
+    // Special formal coloring for Delay Code and Time
+    const delayCell = dataRow.getCell(7);
+    const delayCodeCell = dataRow.getCell(8);
+    delayCell.font = { bold: true, color: { argb: 'FF990000' } }; 
+    delayCodeCell.font = { bold: true, color: { argb: 'FF990000' } }; 
+    
+    if (!isEven) {
+       delayCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFCA5A5' } };
+       delayCodeCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFCA5A5' } };
+    }
+  });
+
+  worksheet.columns = [
+    { width: 12 }, { width: 14 }, { width: 10 }, { width: 10 },
+    { width: 12 }, { width: 12 }, { width: 14 }, { width: 16 },
+    { width: 12 }, { width: 22 }, { width: 50 }
+  ];
+
+  const buffer = await workbook.xlsx.writeBuffer();
+  const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+  saveAs(blob, `Ekip_Gecikme_Raporu_${new Date().toISOString().split('T')[0]}.xlsx`);
+};

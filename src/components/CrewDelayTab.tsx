@@ -16,6 +16,7 @@ import {
   getShiftLabel,
   getShiftTimeRange,
 } from '@/lib/crewDelayUtils';
+import { exportCrewDelayWithLogo } from '@/lib/excelExport';
 import {
   Upload,
   Plane,
@@ -278,25 +279,7 @@ export default function CrewDelayTab() {
 
   // ========== EXPORT ==========
   const handleExport = async () => {
-    const XLSX = (await import('xlsx')).default;
-    const exportData = filteredFlights.map(f => ({
-      'Uçuş': f.flightNumber,
-      'Tarih': f.date,
-      'Kalkış': f.departureAirport,
-      'Varış': f.arrivalAirport,
-      'STD (UTC)': f.std,
-      'ATD (UTC)': f.atd,
-      'Gecikme (dk)': f.delayMinutes,
-      'Gecikme Kodu': f.delayCode,
-      'Vardiya': f.shift,
-      'Vardiya Şefi': supervisors[f.shift] || '',
-      'CREW TRACKING REMARKS': f.crewComment,
-    }));
-
-    const ws = XLSX.utils.json_to_sheet(exportData);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'Ekip Gecikmeleri');
-    XLSX.writeFile(wb, `Ekip_Gecikme_Raporu_${new Date().toISOString().split('T')[0]}.xlsx`);
+    await exportCrewDelayWithLogo(filteredFlights, supervisors);
   };
 
   // ========== RENDER HELPERS ==========

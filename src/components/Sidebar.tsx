@@ -1,10 +1,10 @@
 'use client';
 
-import { PieChart, ArrowLeftRight, Settings, CalendarDays, Clock } from 'lucide-react';
+import { PieChart, ArrowLeftRight, Settings, CalendarDays, Clock, Building2 } from 'lucide-react';
 
 interface SidebarProps {
-  activeTab: 'analysis' | 'comparison' | 'crewDelay';
-  setActiveTab: (tab: 'analysis' | 'comparison' | 'crewDelay') => void;
+  activeTab: 'analysis' | 'comparison' | 'crewDelay' | 'hotelReservation';
+  setActiveTab: (tab: 'analysis' | 'comparison' | 'crewDelay' | 'hotelReservation') => void;
   openAdminModal: () => void;
 }
 
@@ -104,6 +104,11 @@ export default function Sidebar({ activeTab, setActiveTab, openAdminModal }: Sid
             <div onClick={() => setActiveTab('comparison')} className={getLinkClasses(activeTab === 'comparison')}>
               <ArrowLeftRight className="w-5 h-5 text-center" /> 
               <span>Yıllık Karşılaştırma</span>
+            </div>
+
+            <div onClick={() => setActiveTab('hotelReservation')} className={getLinkClasses(activeTab === 'hotelReservation')}>
+              <Building2 className="w-5 h-5 text-center" /> 
+              <span>Otel Rezervasyon</span>
             </div>
             
         </div>
