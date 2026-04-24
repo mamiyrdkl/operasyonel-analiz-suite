@@ -7,7 +7,7 @@ interface PortalScreenProps {
 
 export default function PortalScreen({ onSelectApp }: PortalScreenProps) {
   return (
-    <div className="min-h-screen w-full bg-slate-900 bg-[url('https://images.unsplash.com/photo-1436491865332-7a61a109cc05?q=80&w=2074&auto=format&fit=crop')] bg-cover bg-center bg-no-repeat flex items-center justify-center relative overflow-hidden">
+    <div className="min-h-screen w-full bg-slate-900 bg-[url('/pegasus-wing.png')] bg-cover bg-center bg-no-repeat flex items-center justify-center relative overflow-hidden">
       
       {/* Dark overlay for contrast */}
       <div className="absolute inset-0 bg-slate-900/70 backdrop-blur-sm"></div>
