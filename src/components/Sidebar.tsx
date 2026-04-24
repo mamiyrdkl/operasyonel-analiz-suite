@@ -1,10 +1,13 @@
 'use client';
 
-import { PieChart, ArrowLeftRight, Settings, CalendarDays, Clock, Building2 } from 'lucide-react';
+import { PieChart, ArrowLeftRight, Settings, CalendarDays, Clock, Building2, LogOut, PlaneTakeoff } from 'lucide-react';
+import { AppType } from '@/app/page';
 
 interface SidebarProps {
-  activeTab: 'analysis' | 'comparison' | 'crewDelay' | 'hotelReservation';
-  setActiveTab: (tab: 'analysis' | 'comparison' | 'crewDelay' | 'hotelReservation') => void;
+  currentApp: AppType;
+  goBackToPortal: () => void;
+  activeTab: 'analysis' | 'comparison' | 'crewDelay';
+  setActiveTab: (tab: 'analysis' | 'comparison' | 'crewDelay') => void;
   openAdminModal: () => void;
 }
 
@@ -25,7 +28,7 @@ const religiousHolidays: Record<string, string> = {
   "27-05-2026": "Kurban Bayramı", "28-05-2026": "Kurban Bayramı", "29-05-2026": "Kurban Bayramı", "30-05-2026": "Kurban Bayramı"
 };
 
-export default function Sidebar({ activeTab, setActiveTab, openAdminModal }: SidebarProps) {
+export default function Sidebar({ currentApp, goBackToPortal, activeTab, setActiveTab, openAdminModal }: SidebarProps) {
   const linkBaseClasses = 'flex items-center gap-3 px-4 py-3 mb-2 rounded-lg text-[0.9rem] font-medium transition-all cursor-pointer';
   const getLinkClasses = (isActive: boolean) => 
     isActive 
@@ -85,42 +88,75 @@ export default function Sidebar({ activeTab, setActiveTab, openAdminModal }: Sid
         <div className="bg-white p-1.5 rounded-lg flex items-center justify-center shadow-sm h-10 w-auto min-w-[40px] overflow-hidden">
           <div className="text-red-600 flex items-center justify-center font-black">PEG</div>
         </div>
-        <span className="font-bold text-lg tracking-tight">Analiz Suite</span>
+        <div className="flex flex-col">
+           <span className="font-bold text-[15px] tracking-tight text-white mb-0.5 mt-0.5 leading-none">
+              {currentApp === 'HOTEL' ? 'Otel Paneli' : currentApp === 'CHECK_IN' ? 'Check-In Paneli' : 'Analiz Suite'}
+           </span>
+           <span className="text-[10px] text-slate-400">v2.1 Workspace</span>
+        </div>
       </div>
       
       <nav className="flex-1 pt-4 overflow-y-auto flex flex-col custom-scroll">
-        <div className="text-[10px] font-bold text-slate-500 uppercase mb-3 px-6 tracking-wider">Modüller</div>
-        <div className="px-4">
-            <div onClick={() => setActiveTab('analysis')} className={getLinkClasses(activeTab === 'analysis')}>
-              <PieChart className="w-5 h-5 text-center" /> 
-              <span>Ekip Gecikme Analizi</span>
-            </div>
-            
-            <div onClick={() => setActiveTab('crewDelay')} className={getLinkClasses(activeTab === 'crewDelay')}>
-              <Clock className="w-5 h-5 text-center" /> 
-              <span>Gecikme Analizi</span>
-            </div>
-
-            <div onClick={() => setActiveTab('comparison')} className={getLinkClasses(activeTab === 'comparison')}>
-              <ArrowLeftRight className="w-5 h-5 text-center" /> 
-              <span>Yıllık Karşılaştırma</span>
-            </div>
-
-            <div onClick={() => setActiveTab('hotelReservation')} className={getLinkClasses(activeTab === 'hotelReservation')}>
-              <Building2 className="w-5 h-5 text-center" /> 
-              <span>Otel Rezervasyon</span>
-            </div>
-            
-        </div>
         
-        <div className="mt-8 text-[10px] font-bold text-slate-500 uppercase mb-3 px-6 tracking-wider">Yönetim Paneli</div>
-        
-        <div className="px-4 mb-6">
-            <div onClick={openAdminModal} className={`${linkBaseClasses} text-slate-400 hover:text-white hover:bg-slate-800`}>
-              <Settings className="w-5 h-5 text-center" /> 
-              <span>Ayarlar & Tanımlar</span>
-            </div>
+        {/* Back to Portal Button */}
+        <div className="px-4 mb-4 border-b border-slate-800 pb-4">
+           <div onClick={goBackToPortal} className="flex items-center justify-center gap-2 px-3 py-2 bg-slate-800 text-slate-300 hover:text-white hover:bg-red-600/80 rounded-lg text-xs font-bold transition-all cursor-pointer shadow-sm">
+              <LogOut size={14} /> Ana Portala Dön
+           </div>
         </div>
+
+        {currentApp === 'ANALYSIS_SUITE' && (
+           <>
+              <div className="text-[10px] font-bold text-slate-500 uppercase mb-3 px-6 tracking-wider">Analiz Modülleri</div>
+              <div className="px-4">
+                  <div onClick={() => setActiveTab('analysis')} className={getLinkClasses(activeTab === 'analysis')}>
+                    <PieChart className="w-5 h-5 text-center" /> 
+                    <span>Ekip Gecikme Paneli</span>
+                  </div>
+
+                  <div onClick={() => setActiveTab('comparison')} className={getLinkClasses(activeTab === 'comparison')}>
+                    <ArrowLeftRight className="w-5 h-5 text-center" /> 
+                    <span>Yıllık Karşılaştırma</span>
+                  </div>
+              </div>
+           </>
+        )}
+
+        {currentApp === 'HOTEL' && (
+           <>
+              <div className="text-[10px] font-bold text-slate-500 uppercase mb-3 px-6 tracking-wider">Rezervasyon</div>
+              <div className="px-4">
+                  <div className={getLinkClasses(true)}>
+                    <Building2 className="w-5 h-5 text-center" /> 
+                    <span>Otel Anlaşmaları</span>
+                  </div>
+              </div>
+           </>
+        )}
+
+        {currentApp === 'CHECK_IN' && (
+           <>
+              <div className="text-[10px] font-bold text-slate-500 uppercase mb-3 px-6 tracking-wider">İzleme Modülü</div>
+              <div className="px-4">
+                  <div className={getLinkClasses(true)}>
+                    <PlaneTakeoff className="w-5 h-5 text-center" /> 
+                    <span>Gelişmiş Check-In</span>
+                  </div>
+              </div>
+           </>
+        )}
+        
+        {currentApp === 'ANALYSIS_SUITE' && (
+          <>
+            <div className="mt-8 text-[10px] font-bold text-slate-500 uppercase mb-3 px-6 tracking-wider">Yönetim Paneli</div>
+            <div className="px-4 mb-6">
+                <div onClick={openAdminModal} className={`${linkBaseClasses} text-slate-400 hover:text-white hover:bg-slate-800`}>
+                  <Settings className="w-5 h-5 text-center" /> 
+                  <span>Ayarlar & Tanımlar</span>
+                </div>
+            </div>
+          </>
+        )}
 
         {/* Dynamic Operational Mini Calendar */}
         {renderCalendar()}
