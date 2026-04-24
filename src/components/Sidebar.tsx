@@ -1,6 +1,6 @@
 'use client';
 
-import { PieChart, ArrowLeftRight, Settings, CalendarDays, Clock, Building2, LogOut, PlaneTakeoff } from 'lucide-react';
+import { PieChart, ArrowLeftRight, Settings, CalendarDays, Clock, Building2, LogOut, PlaneTakeoff, ClipboardList } from 'lucide-react';
 import { AppType } from '@/app/page';
 
 interface SidebarProps {
@@ -90,8 +90,11 @@ export default function Sidebar({ currentApp, goBackToPortal, activeTab, setActi
         </div>
         <div className="flex flex-col">
            <span className="font-bold text-[15px] tracking-tight text-white mb-0.5 mt-0.5 leading-none">
-              {currentApp === 'HOTEL' ? 'Otel Paneli' : currentApp === 'CHECK_IN' ? 'Check-In Paneli' : 'Analiz Suite'}
-           </span>
+               {currentApp === 'HOTEL' ? 'Otel Paneli' 
+               : currentApp === 'CHECK_IN' ? 'Check-In Paneli' 
+               : currentApp === 'DELAY_TRACKING' ? 'Gecikme Takip'
+               : 'Analiz Suite'}
+            </span>
            <span className="text-[10px] text-slate-400">v2.1 Workspace</span>
         </div>
       </div>
@@ -141,6 +144,18 @@ export default function Sidebar({ currentApp, goBackToPortal, activeTab, setActi
                   <div className={getLinkClasses(true)}>
                     <PlaneTakeoff className="w-5 h-5 text-center" /> 
                     <span>Gelişmiş Check-In</span>
+                  </div>
+              </div>
+           </>
+        )}
+
+        {currentApp === 'DELAY_TRACKING' && (
+           <>
+              <div className="text-[10px] font-bold text-slate-500 uppercase mb-3 px-6 tracking-wider">Gecikme Kayıt</div>
+              <div className="px-4">
+                  <div className={getLinkClasses(true)}>
+                    <ClipboardList className="w-5 h-5 text-center" /> 
+                    <span>Gecikme Takip</span>
                   </div>
               </div>
            </>

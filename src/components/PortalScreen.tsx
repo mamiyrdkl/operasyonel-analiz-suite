@@ -1,8 +1,8 @@
 'use client';
-import { Building2, ArrowRight, PlaneTakeoff } from 'lucide-react';
+import { Building2, ArrowRight, PlaneTakeoff, ClipboardList } from 'lucide-react';
 
 interface PortalScreenProps {
-  onSelectApp: (app: 'ANALYSIS_SUITE' | 'HOTEL' | 'CHECK_IN') => void;
+  onSelectApp: (app: 'ANALYSIS_SUITE' | 'HOTEL' | 'CHECK_IN' | 'DELAY_TRACKING') => void;
 }
 
 export default function PortalScreen({ onSelectApp }: PortalScreenProps) {
@@ -26,7 +26,7 @@ export default function PortalScreen({ onSelectApp }: PortalScreenProps) {
         </div>
 
         {/* CARDS */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 w-full max-w-6xl animate-in fade-in slide-in-from-bottom-12 duration-1000 delay-200">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 w-full max-w-6xl animate-in fade-in slide-in-from-bottom-12 duration-1000 delay-200">
           
           {/* ANALYSIS SUITE CARD */}
           <div 
@@ -87,6 +87,28 @@ export default function PortalScreen({ onSelectApp }: PortalScreenProps) {
              </p>
              
              <div className="mt-auto flex items-center justify-center gap-2 bg-white/10 px-5 py-2.5 text-sm rounded-full text-white font-bold group-hover:bg-blue-600 transition-colors">
+                Uygulamaya Git <ArrowRight size={16} />
+             </div>
+          </div>
+
+
+          {/* DELAY TRACKING CARD */}
+          <div 
+            onClick={() => onSelectApp('DELAY_TRACKING')}
+            className="group cursor-pointer bg-white/10 backdrop-blur-md rounded-3xl p-8 border border-white/20 hover:bg-white/20 hover:border-white/40 transition-all duration-300 shadow-2xl hover:-translate-y-2 relative overflow-hidden flex flex-col items-center text-center"
+          >
+             <div className="absolute inset-0 bg-gradient-to-br from-amber-600/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+             
+             <div className="w-16 h-16 bg-gradient-to-br from-amber-500 to-orange-600 rounded-2xl flex items-center justify-center mb-6 shadow-lg shadow-amber-600/30 group-hover:scale-110 transition-transform duration-500">
+                <ClipboardList className="w-8 h-8 text-white" strokeWidth={2.5} />
+             </div>
+             
+             <h2 className="text-2xl font-black text-white mb-3 tracking-tight drop-shadow-md">Gecikme Takip</h2>
+             <p className="text-slate-300 leading-relaxed font-medium mb-6 text-sm">
+                Günlük uçuşlarda yaşanan gecikmeleri kayıt altına alan, pairing/bildirim/SMS durumlarını takip eden operasyonel görev izleme ekranı.
+             </p>
+             
+             <div className="mt-auto flex items-center justify-center gap-2 bg-white/10 px-5 py-2.5 text-sm rounded-full text-white font-bold group-hover:bg-amber-600 transition-colors">
                 Uygulamaya Git <ArrowRight size={16} />
              </div>
           </div>
