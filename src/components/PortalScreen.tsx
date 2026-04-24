@@ -39,7 +39,7 @@ export default function PortalScreen({ onSelectApp }: PortalScreenProps) {
                 <PlaneTakeoff className="w-8 h-8 text-white" strokeWidth={2.5} />
              </div>
              
-             <h2 className="text-2xl font-black text-white mb-3 tracking-tight drop-shadow-md">Analiz Suite</h2>
+             <h2 className="text-2xl font-black text-white mb-3 tracking-tight drop-shadow-md">Ekip Gecikme Takip</h2>
              <p className="text-slate-300 leading-relaxed font-medium mb-6 text-sm">
                 Amir ve vardiya bazlı detaylı ekip gecikme analizleri ile yıllık / dönemsel gecikme karşılaştırma modüllerini barındıran tam teşekküllü ekran.
              </p>

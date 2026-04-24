@@ -93,7 +93,7 @@ export default function Sidebar({ currentApp, goBackToPortal, activeTab, setActi
                {currentApp === 'HOTEL' ? 'Otel Paneli' 
                : currentApp === 'CHECK_IN' ? 'Check-In Paneli' 
                : currentApp === 'DELAY_TRACKING' ? 'Gecikme Takip'
-               : 'Analiz Suite'}
+               : 'Ekip Gecikme Takip'}
             </span>
            <span className="text-[10px] text-slate-400">v2.1 Workspace</span>
         </div>
