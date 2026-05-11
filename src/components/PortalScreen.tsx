@@ -10,7 +10,54 @@ export default function PortalScreen({ onSelectApp }: PortalScreenProps) {
     <div className="min-h-screen w-full bg-slate-900 bg-[url('/pegasus-wing.png')] bg-cover bg-center bg-no-repeat flex items-center justify-center relative overflow-hidden">
       
       {/* Dark overlay for contrast */}
-      <div className="absolute inset-0 bg-slate-900/70 backdrop-blur-sm"></div>
+      <div className="absolute inset-0 bg-slate-900/75 backdrop-blur-[2px]"></div>
+
+      {/* Aircraft window frame effect - left side */}
+      <div className="absolute left-0 top-0 bottom-0 w-[260px] pointer-events-none z-0" style={{
+        background: 'radial-gradient(ellipse at left center, transparent 55%, rgba(15,23,42,0.95) 80%)',
+      }}>
+        {/* Oval window frame */}
+        <div className="absolute left-8 top-1/2 -translate-y-1/2" style={{ width: '180px', height: '220px' }}>
+          <div className="absolute inset-0 rounded-[50%] border-[10px] border-slate-600/60 shadow-2xl" style={{
+            boxShadow: 'inset 0 0 40px rgba(0,0,0,0.6), 0 0 30px rgba(0,0,0,0.4)',
+            background: 'linear-gradient(135deg, rgba(147,197,253,0.08) 0%, rgba(96,165,250,0.04) 100%)',
+          }}/>
+          {/* Window inner reflection */}
+          <div className="absolute top-4 left-4 w-12 h-6 rounded-full bg-white/5 rotate-[-20deg]"/>
+        </div>
+      </div>
+
+      {/* Distant Pegasus aircraft silhouette - right center area */}
+      <div className="absolute right-[12%] top-1/2 -translate-y-[60%] z-0 pointer-events-none opacity-30">
+        <svg viewBox="0 0 600 200" width="500" height="170" xmlns="http://www.w3.org/2000/svg">
+          {/* Fuselage */}
+          <ellipse cx="300" cy="100" rx="230" ry="28" fill="white"/>
+          {/* Nose */}
+          <ellipse cx="530" cy="100" rx="40" ry="18" fill="white"/>
+          {/* Tail fin */}
+          <polygon points="70,100 90,50 110,100" fill="white"/>
+          {/* Horizontal stabilizer left */}
+          <polygon points="80,100 60,130 110,110" fill="white"/>
+          {/* Horizontal stabilizer right */}
+          <polygon points="80,100 60,70 110,90" fill="white"/>
+          {/* Main wing - top */}
+          <polygon points="270,96 200,20 350,88" fill="white"/>
+          {/* Main wing - bottom */}
+          <polygon points="270,104 200,180 350,112" fill="white"/>
+          {/* Engine pod under wing */}
+          <ellipse cx="225" cy="115" rx="35" ry="10" fill="rgba(255,255,255,0.7)"/>
+          <ellipse cx="225" cy="85" rx="35" ry="10" fill="rgba(255,255,255,0.7)"/>
+          {/* Windows row */}
+          {[400,430,460,490,510].map((x, i) => (
+            <ellipse key={i} cx={x} cy="96" rx="7" ry="5" fill="rgba(147,210,255,0.6)"/>
+          ))}
+        </svg>
+      </div>
+
+      {/* Subtle Pegasus text watermark on wing area */}
+      <div className="absolute bottom-8 right-12 z-0 pointer-events-none opacity-10 text-white font-black text-[80px] tracking-tighter select-none" style={{ fontFamily: 'Arial Black, sans-serif' }}>
+        PEGASUS
+      </div>
 
       <div className="relative z-10 max-w-6xl w-full px-6 flex flex-col items-center">
         

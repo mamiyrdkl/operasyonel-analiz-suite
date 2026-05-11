@@ -211,6 +211,13 @@ export default function ComparisonTab() {
       ]
   };
 
+  const fmtMins = (mins: number): string => {
+    if (!mins) return '-';
+    const h = Math.floor(mins / 60);
+    const m = mins % 60;
+    return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`;
+  };
+
   return (
     <div className="absolute inset-0 flex flex-col bg-slate-50 transition-opacity duration-300 w-full h-full z-10">
       <header className="bg-white border-b border-slate-200 px-8 py-3 flex justify-between items-center shrink-0 shadow-sm z-10 w-full">
@@ -218,10 +225,9 @@ export default function ComparisonTab() {
           <div className="w-8 h-8 rounded-lg bg-yellow-100 flex items-center justify-center text-yellow-600">
              <ArrowLeftRight className="w-5 h-5"/>
           </div>
-          Günlük Karşılaştırma Analizi
+          Yıllık Karşılaştırma Analizi
         </h2>
         <div className="flex gap-3 items-center">
-            {delayCodes.length > 0 && <span className="text-[10px] text-slate-400 bg-slate-100 px-2 py-1 rounded border border-slate-200">Gelişmiş Gecikme Filtresi Aktif ({delayCodes.length} Kod)</span>}
             <button 
                disabled={!file1 || !file2 || isProcessing}
                onClick={compareData}
@@ -248,7 +254,7 @@ export default function ComparisonTab() {
          <div className="grid grid-cols-2 gap-4 shrink-0 z-10 w-full">
             <div className={`bg-white p-4 rounded-xl shadow-sm border transition-all duration-300 w-full ${file1 ? 'border-green-500 shadow-green-100 ring-2 ring-emerald-50' : 'border-slate-200'}`}>
                <div className="flex justify-between mb-2 items-center">
-                  <span className={`text-xs font-bold uppercase tracking-wider ${file1 ? 'text-green-700' : 'text-slate-500'}`}>REFERANS YIL (1. DOSYA)</span> 
+                  <span className={`text-xs font-bold uppercase tracking-wider ${file1 ? 'text-green-700' : 'text-slate-500'}`}>1. YIL (1. DOSYA)</span> 
                   {file1 && <span className="text-[10px] text-green-700 bg-green-50 px-2 py-0.5 rounded font-bold flex items-center gap-1 border border-green-200"><Check className="w-3 h-3"/> {file1.name}</span>}
                </div>
                <label className={`upload-box flex flex-col items-center justify-center h-16 border-2 border-dashed rounded-lg cursor-pointer transition-all duration-300 group w-full ${file1 ? 'border-green-400 bg-green-50 hover:bg-green-100' : 'border-slate-200 bg-slate-50 hover:bg-slate-100'}`}>
@@ -262,7 +268,7 @@ export default function ComparisonTab() {
 
             <div className={`bg-white p-4 rounded-xl shadow-sm border transition-all duration-300 w-full ${file2 ? 'border-green-500 shadow-green-100 ring-2 ring-emerald-50' : 'border-slate-200'}`}>
                <div className="flex justify-between mb-2 items-center">
-                  <span className={`text-xs font-bold uppercase tracking-wider ${file2 ? 'text-green-700' : 'text-yellow-600'}`}>HEDEF YIL (2. DOSYA)</span> 
+                  <span className={`text-xs font-bold uppercase tracking-wider ${file2 ? 'text-green-700' : 'text-yellow-600'}`}>2. YIL (2. DOSYA)</span> 
                   {file2 && <span className="text-[10px] text-green-700 bg-green-50 px-2 py-0.5 rounded font-bold flex items-center gap-1 border border-green-200"><Check className="w-3 h-3"/> {file2.name}</span>}
                </div>
                <label className={`upload-box flex flex-col items-center justify-center h-16 border-2 border-dashed rounded-lg cursor-pointer transition-all duration-300 group w-full ${file2 ? 'border-green-400 bg-green-50 hover:bg-green-100' : 'border-yellow-200 bg-yellow-50/30 hover:bg-yellow-50'}`}>
@@ -332,8 +338,8 @@ export default function ComparisonTab() {
                                    <td className="text-slate-500">{y1s.crewDelayCount || '-'}</td>
                                    <td className="font-bold text-slate-800 bg-yellow-50/40 border-r border-slate-300">{y2s.crewDelayCount || '-'}</td>
                                    
-                                   <td className="text-rose-600 font-bold">{y1s.crewDelayMins || '-'}</td>
-                                   <td className="font-black text-rose-700 bg-yellow-50/40 border-r border-slate-300">{y2s.crewDelayMins || '-'}</td>
+                                   <td className="text-rose-600 font-bold font-mono">{fmtMins(y1s.crewDelayMins)}</td>
+                                   <td className="font-black text-rose-700 bg-yellow-50/40 border-r border-slate-300 font-mono">{fmtMins(y2s.crewDelayMins)}</td>
                                    
                                    <td className="text-slate-500 font-mono">{y1Etki}</td>
                                    <td className="font-bold font-mono text-slate-800 bg-yellow-50/40">{y2Etki}</td>
@@ -346,7 +352,7 @@ export default function ComparisonTab() {
                                 <td className="p-2">{t1.tf}</td><td className="p-2 bg-yellow-200 border-r border-slate-400">{t2.tf}</td>
                                 <td className="p-2">{(t1.ot/t1.tf*100 || 0).toFixed(1)}%</td><td className="p-2 bg-yellow-200 border-r border-slate-400">{(t2.ot/t2.tf*100 || 0).toFixed(1)}%</td>
                                 <td className="p-2">{t1.cdc}</td><td className="p-2 bg-yellow-200 border-r border-slate-400">{t2.cdc}</td>
-                                <td className="p-2 text-rose-700">{t1.cdm}</td><td className="p-2 bg-yellow-200 text-rose-700 border-r border-slate-400">{t2.cdm}</td>
+                                <td className="p-2 text-rose-700 font-mono">{fmtMins(t1.cdm)}</td><td className="p-2 bg-yellow-200 text-rose-700 border-r border-slate-400 font-mono">{fmtMins(t2.cdm)}</td>
                                 <td className="p-2 font-mono">{(t1.cdm/t1.tf || 0).toFixed(3)}</td><td className="p-2 bg-yellow-200 font-mono">{(t2.cdm/t2.tf || 0).toFixed(3)}</td>
                             </tr>
                          </tfoot>

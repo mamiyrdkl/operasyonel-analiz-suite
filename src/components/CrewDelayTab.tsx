@@ -72,6 +72,13 @@ export default function CrewDelayTab() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // ========== COMPUTED DATA ==========
+  const fmtMins = (mins: number): string => {
+    if (!mins && mins !== 0) return '-';
+    const h = Math.floor(mins / 60);
+    const m = mins % 60;
+    return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`;
+  };
+
   const crewDelayFlights = useMemo(() => {
     return flights.filter(f => f.isCrewDelay && f.delayMinutes >= 15);
   }, [flights]);
@@ -547,8 +554,8 @@ export default function CrewDelayTab() {
               <StatCard
                 icon={Timer}
                 title="Ort. Ekip Gecikme Süresi"
-                value={`${overallStats.avgCrewDelayMinutes.toFixed(0)} dk`}
-                subtitle={`Toplam ${overallStats.totalCrewDelayMinutes} dakika kayıp`}
+                value={fmtMins(Math.round(overallStats.avgCrewDelayMinutes))}
+                subtitle={`Toplam ${fmtMins(overallStats.totalCrewDelayMinutes)} kayıp`}
                 color="bg-blue-500"
               />
             </div>
@@ -601,8 +608,8 @@ export default function CrewDelayTab() {
                           {expandedDelayCode === code && (
                             <div className="mt-2 ml-12 bg-slate-50 rounded-lg p-3 border border-slate-200 text-xs">
                               <div className="grid grid-cols-3 gap-2 mb-2 text-slate-500 font-medium">
-                                <span>Toplam Süre: <span className="text-slate-800 font-bold">{data.totalMinutes} dk</span></span>
-                                <span>Ortalama: <span className="text-slate-800 font-bold">{(data.totalMinutes / data.count).toFixed(0)} dk</span></span>
+                                <span>Toplam Süre: <span className="text-slate-800 font-bold">{fmtMins(data.totalMinutes)}</span></span>
+                                <span>Ortalama: <span className="text-slate-800 font-bold">{fmtMins(Math.round(data.totalMinutes / data.count))}</span></span>
                                 <span>Oran: <span className="text-red-600 font-bold">%{pct.toFixed(1)}</span></span>
                               </div>
                             </div>
@@ -647,7 +654,7 @@ export default function CrewDelayTab() {
                           <div className="text-[10px] text-slate-500">OTP</div>
                         </div>
                         <div>
-                          <div className="text-lg font-black text-slate-800">{s.avgCrewDelayMinutes.toFixed(0)}dk</div>
+                          <div className="text-lg font-black text-slate-800">{s.avgCrewDelayMinutes > 0 ? fmtMins(Math.round(s.avgCrewDelayMinutes)) : '-'}</div>
                           <div className="text-[10px] text-slate-500">Ort. Gecikme</div>
                         </div>
                       </div>
@@ -717,7 +724,7 @@ export default function CrewDelayTab() {
                               f.delayMinutes >= 30 ? 'bg-amber-100 text-amber-700' :
                               'bg-yellow-100 text-yellow-700'
                             }`}>
-                              {f.delayMinutes}dk
+                              {fmtMins(f.delayMinutes)}
                             </span>
                           </td>
                           <td>
@@ -856,7 +863,7 @@ export default function CrewDelayTab() {
                               f.delayMinutes >= 30 ? 'bg-amber-100 text-amber-700' :
                               'bg-yellow-100 text-yellow-700'
                             }`}>
-                              {f.delayMinutes} dk
+                              {fmtMins(f.delayMinutes)}
                             </span>
                           </td>
                           <td>
@@ -953,11 +960,11 @@ export default function CrewDelayTab() {
                       <div className="space-y-2">
                         <div className="flex justify-between text-xs">
                           <span className="text-slate-500">Toplam Gecikme</span>
-                          <span className="font-bold text-slate-800">{s.totalCrewDelayMinutes} dk</span>
+                          <span className="font-bold text-slate-800 font-mono">{fmtMins(s.totalCrewDelayMinutes)}</span>
                         </div>
                         <div className="flex justify-between text-xs">
                           <span className="text-slate-500">Ortalama Gecikme</span>
-                          <span className="font-bold text-slate-800">{s.avgCrewDelayMinutes.toFixed(0)} dk</span>
+                          <span className="font-bold text-slate-800 font-mono">{fmtMins(Math.round(s.avgCrewDelayMinutes))}</span>
                         </div>
                         <div className="flex justify-between text-xs">
                           <span className="text-slate-500">Geciken Uçuş (≥15dk)</span>
@@ -1005,10 +1012,10 @@ export default function CrewDelayTab() {
                               <div key={f.id} className="flex items-center justify-between text-xs bg-slate-50 rounded px-2 py-1.5">
                                 <span className="font-mono font-bold text-slate-700">{f.flightNumber}</span>
                                 <span className="text-slate-400">{f.departureAirport}→{f.arrivalAirport}</span>
-                                <span className={`font-bold px-1.5 rounded ${
+                                <span className={`font-bold px-1.5 rounded font-mono ${
                                   f.delayMinutes >= 60 ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-700'
                                 }`}>
-                                  {f.delayMinutes}dk
+                                  {fmtMins(f.delayMinutes)}
                                 </span>
                               </div>
                             ))}

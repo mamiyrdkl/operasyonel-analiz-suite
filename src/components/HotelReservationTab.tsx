@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Plus, Trash2, Settings, Lock, Search, FileText, Mail, Save, Printer, Building2, Calendar, User, Image as ImageIcon, X, LogIn, Key, LogOut, Send } from 'lucide-react';
+import { Plus, Trash2, Settings, Lock, Search, FileText, Mail, Save, Printer, Building2, Calendar, User, Image as ImageIcon, X, LogIn, Key, LogOut, Send, Edit2 } from 'lucide-react';
 
 const INITIAL_HOTELS = [
   // İSTANBUL
@@ -53,6 +53,8 @@ export default function HotelReservationTab() {
 
   const [searchTerm, setSearchTerm] = useState('');
   const [logoUrl, setLogoUrl] = useState("https://upload.wikimedia.org/wikipedia/commons/2/21/Pegasus_Airlines_logo.svg");
+  const [editingHotel, setEditingHotel] = useState<any | null>(null);
+  const [editHotelData, setEditHotelData] = useState({ city: '', code: '', name: '', email: '', phone: '' });
 
   // Form State
   const [selectedHotel, setSelectedHotel] = useState<any | null>(null);
@@ -160,6 +162,22 @@ export default function HotelReservationTab() {
     } else {
         alert("Sistemde yüklü gelen varsayılan oteller silinemez. Sadece sonradan eklediklerinizi silebilirsiniz.");
     }
+  };
+
+  const handleOpenEditHotel = (hotel: any) => {
+    setEditingHotel(hotel);
+    setEditHotelData({ city: hotel.city, code: hotel.code, name: hotel.name, email: hotel.email, phone: hotel.phone || '' });
+  };
+
+  const handleSaveHotelEdit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingHotel) return;
+    const updated = hotels.map((h: any) => h.id === editingHotel.id ? { ...h, ...editHotelData } : h);
+    setHotels(updated);
+    // Persist only custom hotels
+    const customHotels = updated.filter((h: any) => !INITIAL_HOTELS.find((ih) => ih.id === h.id));
+    localStorage.setItem('custom_hotels', JSON.stringify(customHotels));
+    setEditingHotel(null);
   };
 
   const addGuestRow = () => {
@@ -397,6 +415,7 @@ export default function HotelReservationTab() {
                         <th className="p-2.5">Kod</th>
                         <th className="p-2.5">Otel Adı</th>
                         <th className="p-2.5">E-posta</th>
+                        <th className="p-2.5 text-center">Düzenle</th>
                         <th className="p-2.5 text-center">İşlem</th>
                       </tr>
                     </thead>
@@ -408,6 +427,11 @@ export default function HotelReservationTab() {
                           <td className="p-2.5 font-bold text-slate-800">{h.name}</td>
                           <td className="p-2.5 text-slate-500 truncate max-w-[150px]" title={h.email}>{h.email}</td>
                           <td className="p-2.5 text-center">
+                            <button onClick={() => handleOpenEditHotel(h)} className="p-1.5 rounded-md transition-colors text-blue-500 hover:bg-blue-50 hover:text-blue-700" title="Düzenle">
+                               <Edit2 size={14}/>
+                            </button>
+                          </td>
+                          <td className="p-2.5 text-center">
                             <button onClick={() => handleDeleteHotel(h.id)} className={`p-1.5 rounded-md transition-colors ${h.id.startsWith('h') ? 'text-slate-300 cursor-not-allowed' : 'text-red-500 hover:bg-red-50 hover:text-red-700'}`} disabled={h.id.startsWith('h')} title={h.id.startsWith('h') ? 'Sistem oteli silinemez' : 'Sil'}>
                                <Trash2 size={14}/>
                             </button>
@@ -418,6 +442,29 @@ export default function HotelReservationTab() {
                   </table>
                 </div>
               </div>
+
+              {/* Edit Hotel Modal */}
+              {editingHotel && (
+                <div className="fixed inset-0 bg-slate-900/40 flex items-center justify-center z-[70] backdrop-blur-sm p-4">
+                  <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg border border-slate-200 overflow-hidden">
+                    <div className="bg-slate-800 p-4 text-white flex justify-between items-center">
+                      <h3 className="font-bold flex items-center gap-2 text-sm"><Edit2 size={16} className="text-amber-400"/> Otel Düzenle: {editingHotel.name}</h3>
+                      <button onClick={() => setEditingHotel(null)} className="hover:bg-slate-700/50 p-1.5 rounded-lg"><X size={16}/></button>
+                    </div>
+                    <form onSubmit={handleSaveHotelEdit} className="p-5 grid grid-cols-2 gap-3">
+                      <input value={editHotelData.city} onChange={e => setEditHotelData(p => ({...p, city: e.target.value}))} placeholder="Şehir" className="border border-slate-300 p-2 text-xs rounded outline-none focus:border-amber-400" required />
+                      <input value={editHotelData.code} onChange={e => setEditHotelData(p => ({...p, code: e.target.value}))} placeholder="Kod" className="border border-slate-300 p-2 text-xs rounded outline-none focus:border-amber-400" required />
+                      <input value={editHotelData.name} onChange={e => setEditHotelData(p => ({...p, name: e.target.value}))} placeholder="Otel Adı" className="border border-slate-300 p-2 text-xs rounded outline-none focus:border-amber-400 col-span-2" required />
+                      <input value={editHotelData.email} onChange={e => setEditHotelData(p => ({...p, email: e.target.value}))} placeholder="E-posta" className="border border-slate-300 p-2 text-xs rounded outline-none focus:border-amber-400 col-span-2" required />
+                      <input value={editHotelData.phone} onChange={e => setEditHotelData(p => ({...p, phone: e.target.value}))} placeholder="Telefon" className="border border-slate-300 p-2 text-xs rounded outline-none focus:border-amber-400" />
+                      <div className="flex justify-end gap-2 col-span-2 mt-2">
+                        <button type="button" onClick={() => setEditingHotel(null)} className="px-4 py-2 text-xs text-slate-600 hover:bg-slate-100 rounded-lg">Vazgeç</button>
+                        <button type="submit" className="px-5 py-2 text-xs bg-amber-500 hover:bg-amber-600 text-white rounded-lg font-bold shadow-sm"><Save size={12} className="inline mr-1"/>Kaydet</button>
+                      </div>
+                    </form>
+                  </div>
+                </div>
+              )}
             </div>
           )}
 

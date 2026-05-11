@@ -58,6 +58,7 @@ export default function DelayTrackingTab() {
   const [flights, setFlights] = useState<FlightRecord[]>([]);
   const [editId, setEditId] = useState<string | null>(null);
   const [formData, setFormData] = useState(getInitialForm());
+  const [collapsedDays, setCollapsedDays] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     const saved = localStorage.getItem('crewDelayFlights');
@@ -119,6 +120,15 @@ export default function DelayTrackingTab() {
   const handleCancelEdit = () => {
     setEditId(null);
     setFormData(getInitialForm());
+  };
+
+  const toggleDayCollapse = (date: string) => {
+    setCollapsedDays(prev => {
+      const next = new Set(prev);
+      if (next.has(date)) next.delete(date);
+      else next.add(date);
+      return next;
+    });
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -192,10 +202,10 @@ export default function DelayTrackingTab() {
         </button>
       </div>
 
-      <div className="flex-1 overflow-y-auto custom-scroll p-5 space-y-5">
+      <div className="flex-1 overflow-y-auto custom-scroll p-5 flex flex-col gap-5">
         
         {/* FORM */}
-        <div className={`bg-white p-5 rounded-xl shadow-sm border transition-all duration-300 ${editId ? 'border-yellow-400 ring-2 ring-yellow-100' : 'border-slate-200'}`}>
+        <div className={`bg-white p-5 rounded-xl shadow-sm border transition-all duration-300 shrink-0 ${editId ? 'border-yellow-400 ring-2 ring-yellow-100' : 'border-slate-200'}`}>
           <h2 className="text-xs font-bold text-slate-500 mb-4 flex items-center justify-between uppercase tracking-wider border-b border-slate-100 pb-3">
             <span className="flex items-center gap-2">
               <div className={`w-1.5 h-4 rounded-full ${editId ? 'bg-yellow-500' : 'bg-blue-500'}`} />
@@ -372,7 +382,7 @@ export default function DelayTrackingTab() {
         </div>
 
         {/* FLIGHT LIST */}
-        <div className="space-y-5 pb-4">
+        <div className="flex flex-col gap-5 pb-4">
           {groupedFlights.length === 0 ? (
             <div className="bg-white rounded-xl shadow-sm border border-dashed border-slate-200 overflow-hidden">
               <div className="flex flex-col items-center justify-center py-16 text-slate-400">
@@ -382,18 +392,30 @@ export default function DelayTrackingTab() {
               </div>
             </div>
           ) : (
-            groupedFlights.map(group => (
+            groupedFlights.map(group => {
+              const isCollapsed = collapsedDays.has(group.date);
+              return (
               <div key={group.date} className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
                 <div className="bg-slate-800 text-white px-5 py-3 flex justify-between items-center">
                   <h3 className="font-bold flex items-center gap-2 text-sm">
                     <Calendar size={15} />
                     {formatDateDisplay(group.date)}
                   </h3>
-                  <span className="text-xs bg-slate-700 px-3 py-1 rounded-full text-slate-300 border border-slate-600 font-medium">
-                    {group.items.length} UÇUŞ
-                  </span>
+                  <div className="flex items-center gap-3">
+                    <span className="text-xs bg-slate-700 px-3 py-1 rounded-full text-slate-300 border border-slate-600 font-medium">
+                      {group.items.length} UÇUŞ
+                    </span>
+                    <button
+                      onClick={() => toggleDayCollapse(group.date)}
+                      className="w-7 h-7 flex items-center justify-center bg-slate-700 hover:bg-slate-600 rounded-md transition-colors font-bold text-white text-sm"
+                      title={isCollapsed ? 'Günü Aç' : 'Günü Kapat'}
+                    >
+                      {isCollapsed ? '+' : '−'}
+                    </button>
+                  </div>
                 </div>
-                <div className="overflow-x-auto max-h-[500px] overflow-y-auto custom-scroll">
+                {!isCollapsed && (
+                <div className="overflow-x-auto max-h-[400px] overflow-y-auto custom-scroll">
                   <table className="w-full text-sm text-left">
                     <TableHeader />
                     <tbody className="divide-y divide-slate-100">
@@ -445,8 +467,10 @@ export default function DelayTrackingTab() {
                     </tbody>
                   </table>
                 </div>
+                )}
               </div>
-            ))
+              );
+            })
           )}
         </div>
       </div>
