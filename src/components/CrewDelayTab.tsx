@@ -739,12 +739,12 @@ export default function CrewDelayTab() {
                           <td className="text-xs truncate" style={{ minWidth: '200px', maxWidth: '200px' }} title={f.delayDescription || '—'}>
                             <span className="text-slate-700 text-[11px]">{f.delayDescription || '—'}</span>
                           </td>
-                          <td style={{ minWidth: '250px' }}>
-                            <div className="flex items-center gap-1">
+                          <td style={{ minWidth: '250px', verticalAlign: 'middle' }}>
+                            <div className="flex items-center gap-1 w-full">
                               <MessageSquarePlus className="w-3 h-3 text-slate-300 shrink-0" />
                               <input
                                 type="text"
-                                className="cell-input text-xs w-full"
+                                className="cell-input text-xs flex-1 min-w-0"
                                 placeholder="Crew tracking remark yazın..."
                                 value={f.crewComment}
                                 onChange={e => handleCommentChange(f.id, e.target.value)}
@@ -892,12 +892,12 @@ export default function CrewDelayTab() {
                               {f.shift === 'EARLY' ? '🌅 EARLY' : f.shift === 'LATE' ? '🌇 LATE' : '🌙 NIGHT'}
                             </span>
                           </td>
-                          <td className="min-w-[200px]">
-                            <div className="flex items-center gap-1">
+                          <td className="min-w-[220px]" style={{ verticalAlign: 'middle' }}>
+                            <div className="flex items-center gap-1 w-full">
                               <MessageSquarePlus className="w-3 h-3 text-slate-300 shrink-0" />
                               <input
                                 type="text"
-                                className="cell-input text-xs"
+                                className="cell-input text-xs flex-1 min-w-0"
                                 placeholder="Crew tracking remark..."
                                 value={f.crewComment}
                                 onChange={e => handleCommentChange(f.id, e.target.value)}
