@@ -10,54 +10,54 @@ export default function PortalScreen({ onSelectApp }: PortalScreenProps) {
     <div className="min-h-screen w-full bg-slate-900 bg-[url('/pegasus-wing.png')] bg-cover bg-center bg-no-repeat flex items-center justify-center relative overflow-hidden">
       
       {/* Dark overlay for contrast */}
-      <div className="absolute inset-0 bg-slate-900/75 backdrop-blur-[2px]"></div>
+      <div className="absolute inset-0 bg-slate-900/70 backdrop-blur-[2px]"></div>
 
-      {/* Aircraft window frame effect - left side */}
-      <div className="absolute left-0 top-0 bottom-0 w-[260px] pointer-events-none z-0" style={{
-        background: 'radial-gradient(ellipse at left center, transparent 55%, rgba(15,23,42,0.95) 80%)',
+      {/* Cabin window frame - left panel: oval window with Pegasus tail visible outside */}
+      <div className="absolute left-0 top-0 bottom-0 w-[300px] pointer-events-none z-0" style={{
+        background: 'radial-gradient(ellipse at 30% 50%, rgba(15,23,42,0) 0%, rgba(15,23,42,0.98) 72%)',
       }}>
-        {/* Oval window frame */}
-        <div className="absolute left-8 top-1/2 -translate-y-1/2" style={{ width: '180px', height: '220px' }}>
-          <div className="absolute inset-0 rounded-[50%] border-[10px] border-slate-600/60 shadow-2xl" style={{
-            boxShadow: 'inset 0 0 40px rgba(0,0,0,0.6), 0 0 30px rgba(0,0,0,0.4)',
-            background: 'linear-gradient(135deg, rgba(147,197,253,0.08) 0%, rgba(96,165,250,0.04) 100%)',
+        {/* Oval window outer frame */}
+        <div className="absolute left-10 top-1/2 -translate-y-1/2" style={{ width: '190px', height: '240px' }}>
+          {/* Window border - thick plastic frame */}
+          <div className="absolute inset-0 rounded-[50%] border-[14px] border-slate-500/70" style={{
+            boxShadow: 'inset 0 0 30px rgba(0,0,0,0.7), inset 0 0 80px rgba(0,0,0,0.3), 0 0 40px rgba(0,0,0,0.5)',
           }}/>
-          {/* Window inner reflection */}
-          <div className="absolute top-4 left-4 w-12 h-6 rounded-full bg-white/5 rotate-[-20deg]"/>
+          {/* Sky visible through window */}
+          <div className="absolute inset-[14px] rounded-[50%] overflow-hidden" style={{
+            background: 'linear-gradient(180deg, rgba(56,130,200,0.25) 0%, rgba(100,160,230,0.15) 60%, rgba(200,220,255,0.08) 100%)',
+          }}>
+            {/* Pegasus aircraft TAIL silhouette visible through window */}
+            <svg viewBox="0 0 160 200" width="100%" height="100%" xmlns="http://www.w3.org/2000/svg" style={{ opacity: 0.55 }}>
+              {/* Main tail fin (vertical stabilizer) */}
+              <polygon points="72,170 88,170 95,80 65,80" fill="white"/>
+              {/* Tail fin top sweep */}
+              <path d="M65,80 Q78,20 88,30 L95,80 Z" fill="white"/>
+              {/* Fuselage rear section (tapered tube) */}
+              <ellipse cx="80" cy="168" rx="18" ry="8" fill="white"/>
+              <rect x="62" y="130" width="36" height="40" rx="4" fill="white"/>
+              {/* Left horizontal stabilizer */}
+              <polygon points="62,148 10,135 10,128 62,140" fill="rgba(255,255,255,0.85)"/>
+              {/* Right horizontal stabilizer */}
+              <polygon points="98,148 150,135 150,128 98,140" fill="rgba(255,255,255,0.85)"/>
+              {/* Engine exhaust glow */}
+              <ellipse cx="80" cy="176" rx="8" ry="4" fill="rgba(255,200,100,0.4)"/>
+              {/* Fuselage windows row (tiny) */}
+              <rect x="66" y="143" width="6" height="4" rx="1" fill="rgba(147,210,255,0.7)"/>
+              <rect x="75" y="143" width="6" height="4" rx="1" fill="rgba(147,210,255,0.7)"/>
+              <rect x="84" y="143" width="6" height="4" rx="1" fill="rgba(147,210,255,0.7)"/>
+              {/* Distance haze */}
+              <ellipse cx="80" cy="160" rx="40" ry="60" fill="rgba(150,190,255,0.05)"/>
+            </svg>
+          </div>
+          {/* Window glare/reflection */}
+          <div className="absolute inset-[14px] rounded-[50%]" style={{
+            background: 'linear-gradient(135deg, rgba(255,255,255,0.12) 0%, transparent 50%)',
+          }}/>
+          {/* Inner window seal ring */}
+          <div className="absolute inset-[10px] rounded-[50%] border border-slate-400/20"/>
         </div>
       </div>
 
-      {/* Distant Pegasus aircraft silhouette - right center area */}
-      <div className="absolute right-[12%] top-1/2 -translate-y-[60%] z-0 pointer-events-none opacity-30">
-        <svg viewBox="0 0 600 200" width="500" height="170" xmlns="http://www.w3.org/2000/svg">
-          {/* Fuselage */}
-          <ellipse cx="300" cy="100" rx="230" ry="28" fill="white"/>
-          {/* Nose */}
-          <ellipse cx="530" cy="100" rx="40" ry="18" fill="white"/>
-          {/* Tail fin */}
-          <polygon points="70,100 90,50 110,100" fill="white"/>
-          {/* Horizontal stabilizer left */}
-          <polygon points="80,100 60,130 110,110" fill="white"/>
-          {/* Horizontal stabilizer right */}
-          <polygon points="80,100 60,70 110,90" fill="white"/>
-          {/* Main wing - top */}
-          <polygon points="270,96 200,20 350,88" fill="white"/>
-          {/* Main wing - bottom */}
-          <polygon points="270,104 200,180 350,112" fill="white"/>
-          {/* Engine pod under wing */}
-          <ellipse cx="225" cy="115" rx="35" ry="10" fill="rgba(255,255,255,0.7)"/>
-          <ellipse cx="225" cy="85" rx="35" ry="10" fill="rgba(255,255,255,0.7)"/>
-          {/* Windows row */}
-          {[400,430,460,490,510].map((x, i) => (
-            <ellipse key={i} cx={x} cy="96" rx="7" ry="5" fill="rgba(147,210,255,0.6)"/>
-          ))}
-        </svg>
-      </div>
-
-      {/* Subtle Pegasus text watermark on wing area */}
-      <div className="absolute bottom-8 right-12 z-0 pointer-events-none opacity-10 text-white font-black text-[80px] tracking-tighter select-none" style={{ fontFamily: 'Arial Black, sans-serif' }}>
-        PEGASUS
-      </div>
 
       <div className="relative z-10 max-w-6xl w-full px-6 flex flex-col items-center">
         

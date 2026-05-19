@@ -137,7 +137,8 @@ export default function AnalysisTab() {
                             delayCode: code, delayTimeVal: time,
                             remark: idxRemark !== -1 ? row[idxRemark] : "",
                             desc: matchedCode.desc,
-                            chief: "" 
+                            chief: "",
+                            crewRemark: ""
                         });
                     }
                 });
@@ -174,6 +175,10 @@ export default function AnalysisTab() {
 
   const updateChief = (idxToUpdate: number, newVal: string) => {
       setProcessedData(prev => prev.map((item, i) => i === idxToUpdate ? { ...item, chief: newVal } : item));
+  };
+
+  const updateRemark = (idxToUpdate: number, newVal: string) => {
+      setProcessedData(prev => prev.map((item, i) => i === idxToUpdate ? { ...item, crewRemark: newVal } : item));
   };
 
   // --- CHART METRICS ---
@@ -366,6 +371,7 @@ export default function AnalysisTab() {
                           <th className="w-16 bg-slate-200 text-slate-800 border-b border-slate-300 text-center">CODE</th>
                           <th className="w-[60px] bg-slate-200 text-slate-800 border-b border-slate-300 text-right pr-2">DAKİKA</th>
                           <th className="bg-slate-200 text-slate-800 border-b border-slate-300">DESCRIPTION</th>
+                          <th className="w-48 bg-emerald-100 text-emerald-900 border-b border-emerald-200 border-l border-r">CREW REMARKS</th>
                       </tr>
                   </thead>
                   <tbody>
@@ -396,7 +402,16 @@ export default function AnalysisTab() {
                                </td>
                                <td className="text-right font-black text-rose-600 pr-2 text-[11px]">{row.delayTimeVal}</td>
                                <td className="text-[10px] text-slate-600 font-medium truncate max-w-[280px]" title={row.desc}>{row.desc}</td>
-                             </tr>  
+                               <td className="p-0 border-l border-r border-emerald-100 bg-emerald-50/30 align-middle min-w-[180px]">
+                                 <input
+                                   type="text"
+                                   value={row.crewRemark || ''}
+                                   onChange={(e) => updateRemark(i, e.target.value)}
+                                   placeholder="Crew remark yazın..."
+                                   className="w-full bg-transparent outline-none text-[10px] text-slate-700 px-2 py-1 h-full placeholder-emerald-300 focus:bg-white transition"
+                                 />
+                               </td>
+                             </tr>
                            ))
                       ) : (
                           <tr><td colSpan={11} className="py-24 text-center text-slate-400 italic text-sm">Waiting for dataset. Upload Excel and click Process.</td></tr>

@@ -709,6 +709,7 @@ export default function CrewDelayTab() {
                         <th className="pg-th-analysis text-left">Gecikme</th>
                         <th className="pg-th-analysis text-left">Kod</th>
                         <th className="pg-th-analysis text-left">DELAY CODE REMARKS</th>
+                        <th className="pg-th-analysis text-left" style={{ minWidth: '200px' }}>AÇIKLAMA</th>
                         <th className="pg-th-analysis text-left" style={{ minWidth: '250px' }}>CREW TRACKING REMARKS</th>
                       </tr>
                     </thead>
@@ -732,8 +733,11 @@ export default function CrewDelayTab() {
                               {f.delayCode}
                             </span>
                           </td>
-                          <td className="text-xs max-w-[180px] truncate" title={CREW_DELAY_CODE_DESCRIPTIONS[f.delayCode] || f.delayDescription || '—'}>
-                            <span className="text-slate-400 italic">{CREW_DELAY_CODE_DESCRIPTIONS[f.delayCode] || f.delayDescription || '—'}</span>
+                          <td className="text-xs max-w-[180px] truncate" title={CREW_DELAY_CODE_DESCRIPTIONS[f.delayCode] || '—'}>
+                            <span className="text-slate-400 italic">{CREW_DELAY_CODE_DESCRIPTIONS[f.delayCode] || '—'}</span>
+                          </td>
+                          <td className="text-xs max-w-[200px] truncate" title={f.delayDescription || '—'}>
+                            <span className="text-slate-600">{f.delayDescription || '—'}</span>
                           </td>
                           <td style={{ minWidth: '250px' }}>
                             <div className="flex items-center gap-1">
@@ -819,7 +823,8 @@ export default function CrewDelayTab() {
                         { key: 'atd', label: 'ATD (UTC)' },
                         { key: 'delayMinutes', label: 'Gecikme (dk)' },
                         { key: 'delayCode', label: 'Gecikme Kodu' },
-                        { key: 'delayDescription', label: 'DELAY CODE REMARKS' },
+                        { key: '_delayCodeRemarks', label: 'DELAY CODE REMARKS' },
+                        { key: 'delayDescription', label: 'AÇIKLAMA' },
                         { key: 'shift', label: 'Vardiya' },
                         { key: 'crewComment', label: 'CREW TRACKING REMARKS' },
                       ].map(col => (
@@ -843,7 +848,7 @@ export default function CrewDelayTab() {
                   <tbody>
                     {filteredFlights.length === 0 ? (
                       <tr>
-                        <td colSpan={11} className="text-center py-12 text-sm text-slate-400">
+                        <td colSpan={12} className="text-center py-12 text-sm text-slate-400">
                           <Plane className="w-8 h-8 mx-auto mb-2 text-slate-300" />
                           Filtrelere uygun ekip kaynaklı gecikme bulunamadı
                         </td>
@@ -871,8 +876,11 @@ export default function CrewDelayTab() {
                               {f.delayCode}
                             </span>
                           </td>
-                          <td className="text-xs max-w-[200px] truncate" title={CREW_DELAY_CODE_DESCRIPTIONS[f.delayCode] || f.delayDescription || '—'}>
-                            <span className="text-slate-500 italic">{CREW_DELAY_CODE_DESCRIPTIONS[f.delayCode] || f.delayDescription || '—'}</span>
+                          <td className="text-xs max-w-[200px] truncate" title={CREW_DELAY_CODE_DESCRIPTIONS[f.delayCode] || '—'}>
+                            <span className="text-slate-500 italic">{CREW_DELAY_CODE_DESCRIPTIONS[f.delayCode] || '—'}</span>
+                          </td>
+                          <td className="text-xs max-w-[200px] truncate" title={f.delayDescription || '—'}>
+                            <span className="text-slate-600">{f.delayDescription || '—'}</span>
                           </td>
                           <td>
                             <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${

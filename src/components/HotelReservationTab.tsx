@@ -1,7 +1,7 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import { Plus, Trash2, Settings, Lock, Search, FileText, Mail, Save, Printer, Building2, Calendar, User, Image as ImageIcon, X, LogIn, Key, LogOut, Send, Edit2 } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { Plus, Trash2, Settings, Lock, Search, FileText, Mail, Save, Printer, Building2, Calendar, User, Image as ImageIcon, X, LogIn, Key, LogOut, Send, Edit2, Download, Copy } from 'lucide-react';
 
 const INITIAL_HOTELS = [
   // İSTANBUL
@@ -55,6 +55,9 @@ export default function HotelReservationTab() {
   const [logoUrl, setLogoUrl] = useState("https://upload.wikimedia.org/wikipedia/commons/2/21/Pegasus_Airlines_logo.svg");
   const [editingHotel, setEditingHotel] = useState<any | null>(null);
   const [editHotelData, setEditHotelData] = useState({ city: '', code: '', name: '', email: '', phone: '' });
+  const [previewImageUrl, setPreviewImageUrl] = useState<string | null>(null);
+  const [pendingMailtoUrl, setPendingMailtoUrl] = useState<string>('');
+  const formCaptureRef = useRef<HTMLDivElement>(null);
 
   // Form State
   const [selectedHotel, setSelectedHotel] = useState<any | null>(null);
@@ -224,7 +227,33 @@ export default function HotelReservationTab() {
 
     body += `\nBest Regards,\nReservation Team`;
    
-    window.location.href = `mailto:${cleanEmails}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+    return `mailto:${cleanEmails}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+  };
+
+  const handleEmailWithPreview = async () => {
+    if (!selectedHotel) return;
+    const mailtoUrl = generateMailto();
+    if (!mailtoUrl) return;
+
+    if (formCaptureRef.current) {
+      try {
+        const html2canvas = (await import('html2canvas')).default;
+        const canvas = await html2canvas(formCaptureRef.current, {
+          backgroundColor: '#ffffff',
+          scale: 1.5,
+          useCORS: true,
+          logging: false,
+        });
+        const imgUrl = canvas.toDataURL('image/png');
+        setPreviewImageUrl(imgUrl);
+        setPendingMailtoUrl(mailtoUrl);
+      } catch {
+        // fallback: just open mailto
+        window.location.href = mailtoUrl;
+      }
+    } else {
+      window.location.href = mailtoUrl;
+    }
   };
 
   const handlePrint = () => {

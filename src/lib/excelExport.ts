@@ -68,7 +68,7 @@ export const exportToExcelWithLogo = async (processedData: any[]) => {
   titleRow.font = { size: 16, bold: true, color: { argb: 'FFD52B1E' } }; // Official Pegasus Red Headline
   worksheet1.addRow([]);
 
-  const headers = ["TARİH", "VARDİYA", "AMİR", "UÇUŞ NO", "KALKIŞ", "VARIŞ", "STD", "ATD", "GECİKME KODU", "SÜRE (dk)", "AÇIKLAMA"];
+  const headers = ["TARİH", "VARDİYA", "AMİR", "UÇUŞ NO", "KALKIŞ", "VARIŞ", "STD", "ATD", "GECİKME KODU", "SÜRE (dk)", "AÇIKLAMA", "CREW REMARKS"];
   const headerRow = worksheet1.addRow(headers);
   
   headerRow.eachCell((cell) => {
@@ -80,7 +80,7 @@ export const exportToExcelWithLogo = async (processedData: any[]) => {
 
   processedData.forEach((row, index) => {
     const dataRow = worksheet1.addRow([
-      row.date, row.shift, row.chief || 'ATANMAMIŞ', row.flight, row.depPort, row.arrPort, row.std, row.atd, row.delayCode, row.delayTimeVal, row.remark
+      row.date, row.shift, row.chief || 'ATANMAMIŞ', row.flight, row.depPort, row.arrPort, row.std, row.atd, row.delayCode, row.delayTimeVal, row.remark, row.crewRemark || ''
     ]);
     
     const isEven = index % 2 === 0;
@@ -116,7 +116,7 @@ export const exportToExcelWithLogo = async (processedData: any[]) => {
   worksheet1.columns = [
     { width: 14 }, { width: 14 }, { width: 25 }, { width: 14 },
     { width: 10 }, { width: 10 }, { width: 8 }, { width: 8 },
-    { width: 18 }, { width: 14 }, { width: 45 }
+    { width: 18 }, { width: 14 }, { width: 45 }, { width: 50 }
   ];
 
   // ============================================
@@ -213,7 +213,21 @@ export const exportCrewDelayWithLogo = async (filteredFlights: any[], supervisor
   titleRow.font = { size: 16, bold: true, color: { argb: 'FFD52B1E' } }; // Pegasus Red
   worksheet.addRow([]);
 
-  const headers = ["Uçuş", "Tarih", "Kalkış", "Varış", "STD (UTC)", "ATD (UTC)", "Gecikme (dk)", "Gecikme Kodu", "Vardiya", "Vardiya Şefi", "CREW TRACKING REMARKS"];
+  const CREW_DELAY_CODE_DESCRIPTIONS: Record<string, string> = {
+    '93': 'Late crew - positioning/deadheading',
+    '94': 'Late crew - check-in/ready',
+    '95': 'Crew extended rest period',
+    '96': 'Crew on duty limitation',
+    '97': 'Crew on sick leave',
+    '98': 'Awaiting crew documents',
+    '99': 'Other crew-related reason',
+    'SB': 'Standby crew not available',
+    'CA': 'Captain absence',
+    'FO': 'First Officer absence',
+    'CC': 'Cabin Crew absence',
+  };
+
+  const headers = ["Uçuş", "Tarih", "Kalkış", "Varış", "STD (UTC)", "ATD (UTC)", "Gecikme (dk)", "Gecikme Kodu", "DELAY CODE REMARKS", "AÇIKLAMA", "Vardiya", "Vardiya Şefi", "CREW TRACKING REMARKS"];
   const headerRow = worksheet.addRow(headers);
   
   headerRow.eachCell((cell) => {
@@ -225,7 +239,10 @@ export const exportCrewDelayWithLogo = async (filteredFlights: any[], supervisor
 
   filteredFlights.forEach((f, index) => {
     const dataRow = worksheet.addRow([
-      f.flightNumber, f.date, f.departureAirport, f.arrivalAirport, f.std, f.atd, f.delayMinutes, f.delayCode, f.shift, supervisors[f.shift] || '', f.crewComment
+      f.flightNumber, f.date, f.departureAirport, f.arrivalAirport, f.std, f.atd, f.delayMinutes, f.delayCode,
+      CREW_DELAY_CODE_DESCRIPTIONS[f.delayCode] || '',
+      f.delayDescription || '',
+      f.shift, supervisors[f.shift] || '', f.crewComment
     ]);
     
     const isEven = index % 2 === 0;
@@ -240,7 +257,7 @@ export const exportCrewDelayWithLogo = async (filteredFlights: any[], supervisor
         }
 
         // Align center for standard columns
-        if ([1, 2, 3, 4, 5, 6, 7, 8, 9].includes(colNumber)) {
+        if ([1, 2, 3, 4, 5, 6, 7, 8, 11].includes(colNumber)) {
             cell.alignment = { vertical: 'middle', horizontal: 'center' };
         }
     });
@@ -260,7 +277,7 @@ export const exportCrewDelayWithLogo = async (filteredFlights: any[], supervisor
   worksheet.columns = [
     { width: 12 }, { width: 14 }, { width: 10 }, { width: 10 },
     { width: 12 }, { width: 12 }, { width: 14 }, { width: 16 },
-    { width: 12 }, { width: 22 }, { width: 50 }
+    { width: 40 }, { width: 40 }, { width: 12 }, { width: 22 }, { width: 50 }
   ];
 
   const buffer = await workbook.xlsx.writeBuffer();
