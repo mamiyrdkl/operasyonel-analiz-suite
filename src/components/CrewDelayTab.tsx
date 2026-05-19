@@ -708,9 +708,9 @@ export default function CrewDelayTab() {
                         <th className="pg-th-analysis text-left">Rota</th>
                         <th className="pg-th-analysis text-left">Gecikme</th>
                         <th className="pg-th-analysis text-left">Kod</th>
-                        <th className="pg-th-analysis text-left" style={{ minWidth: '200px', width: '200px' }}>DELAY CODE REMARKS</th>
-                        <th className="pg-th-analysis text-left" style={{ minWidth: '200px', width: '200px' }}>AÇIKLAMA</th>
-                        <th className="pg-th-analysis text-left" style={{ minWidth: '250px' }}>CREW TRACKING REMARKS</th>
+                        <th className="pg-th-analysis text-center" style={{ minWidth: '200px', width: '200px' }}>DELAY CODE REMARKS</th>
+                        <th className="pg-th-analysis text-center" style={{ minWidth: '200px', width: '200px' }}>AÇIKLAMA</th>
+                        <th className="pg-th-analysis text-center" style={{ minWidth: '250px' }}>CREW TRACKING REMARKS</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -733,18 +733,18 @@ export default function CrewDelayTab() {
                               {f.delayCode}
                             </span>
                           </td>
-                          <td className="text-xs truncate" style={{ minWidth: '200px', maxWidth: '200px' }} title={CREW_DELAY_CODE_DESCRIPTIONS[f.delayCode] || '—'}>
+                          <td className="text-xs text-center" style={{ minWidth: '200px', maxWidth: '200px' }} title={CREW_DELAY_CODE_DESCRIPTIONS[f.delayCode] || '—'}>
                             <span className="text-slate-400 italic text-[11px]">{CREW_DELAY_CODE_DESCRIPTIONS[f.delayCode] || '—'}</span>
                           </td>
-                          <td className="text-xs truncate" style={{ minWidth: '200px', maxWidth: '200px' }} title={f.delayDescription || '—'}>
+                          <td className="text-xs text-center" style={{ minWidth: '200px', maxWidth: '200px' }} title={f.delayDescription || '—'}>
                             <span className="text-slate-700 text-[11px]">{f.delayDescription || '—'}</span>
                           </td>
                           <td style={{ minWidth: '250px', verticalAlign: 'middle' }}>
-                            <div className="flex items-center gap-1 w-full">
+                            <div className="flex items-center justify-center gap-1 w-full">
                               <MessageSquarePlus className="w-3 h-3 text-slate-300 shrink-0" />
                               <input
                                 type="text"
-                                className="cell-input text-xs flex-1 min-w-0"
+                                className="cell-input text-xs flex-1 min-w-0 text-center"
                                 placeholder="Crew tracking remark yazın..."
                                 value={f.crewComment}
                                 onChange={e => handleCommentChange(f.id, e.target.value)}
@@ -823,18 +823,18 @@ export default function CrewDelayTab() {
                         { key: 'atd', label: 'ATD (UTC)', width: undefined },
                         { key: 'delayMinutes', label: 'Gecikme (dk)', width: undefined },
                         { key: 'delayCode', label: 'Gecikme Kodu', width: undefined },
-                        { key: '_delayCodeRemarks', label: 'DELAY CODE REMARKS', width: '200px' },
-                        { key: 'delayDescription', label: 'AÇIKLAMA', width: '200px' },
+                        { key: '_delayCodeRemarks', label: 'DELAY CODE REMARKS', width: '200px', center: true },
+                        { key: 'delayDescription', label: 'AÇIKLAMA', width: '200px', center: true },
                         { key: 'shift', label: 'Vardiya', width: undefined },
-                        { key: 'crewComment', label: 'CREW TRACKING REMARKS', width: '220px' },
-                      ] as { key: string; label: string; width?: string }[]).map(col => (
+                        { key: 'crewComment', label: 'CREW TRACKING REMARKS', width: '220px', center: true },
+                      ] as { key: string; label: string; width?: string; center?: boolean }[]).map(col => (
                         <th
                           key={col.key}
                           onClick={() => handleSort(col.key)}
-                          className="cursor-pointer hover:bg-slate-200 select-none pg-th-analysis"
+                          className={`cursor-pointer hover:bg-slate-200 select-none pg-th-analysis ${col.center ? 'text-center' : ''}`}
                           style={col.width ? { minWidth: col.width, width: col.width } : undefined}
                         >
-                          <div className="flex items-center gap-1">
+                          <div className={`flex items-center gap-1 ${col.center ? 'justify-center' : ''}`}>
                             {col.label}
                             {sortColumn === col.key && (
                               <span className="text-red-500">
@@ -892,12 +892,12 @@ export default function CrewDelayTab() {
                               {f.shift === 'EARLY' ? '🌅 EARLY' : f.shift === 'LATE' ? '🌇 LATE' : '🌙 NIGHT'}
                             </span>
                           </td>
-                          <td className="min-w-[220px]" style={{ verticalAlign: 'middle' }}>
-                            <div className="flex items-center gap-1 w-full">
+                          <td className="min-w-[220px] text-center" style={{ verticalAlign: 'middle' }}>
+                            <div className="flex items-center justify-center gap-1 w-full">
                               <MessageSquarePlus className="w-3 h-3 text-slate-300 shrink-0" />
                               <input
                                 type="text"
-                                className="cell-input text-xs flex-1 min-w-0"
+                                className="cell-input text-xs flex-1 min-w-0 text-center"
                                 placeholder="Crew tracking remark..."
                                 value={f.crewComment}
                                 onChange={e => handleCommentChange(f.id, e.target.value)}
