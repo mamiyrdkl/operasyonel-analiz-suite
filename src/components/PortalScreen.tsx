@@ -7,10 +7,10 @@ interface PortalScreenProps {
 
 export default function PortalScreen({ onSelectApp }: PortalScreenProps) {
   return (
-    <div className="min-h-screen w-full bg-slate-900 bg-[url('/pegasus-bg-ai.png')] bg-cover bg-center bg-no-repeat flex items-center justify-center relative overflow-hidden">
+    <div className="min-h-screen w-full bg-slate-900 bg-[url('/portal-bg.png')] bg-cover bg-center bg-no-repeat flex items-center justify-center relative overflow-hidden">
       
       {/* Dark overlay for contrast */}
-      <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-[1px]"></div>
+      <div className="absolute inset-0 bg-slate-900/55"></div>
 
 
       <div className="relative z-10 max-w-6xl w-full px-6 flex flex-col items-center">
