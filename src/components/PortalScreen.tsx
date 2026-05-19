@@ -7,56 +7,10 @@ interface PortalScreenProps {
 
 export default function PortalScreen({ onSelectApp }: PortalScreenProps) {
   return (
-    <div className="min-h-screen w-full bg-slate-900 bg-[url('/pegasus-wing.png')] bg-cover bg-center bg-no-repeat flex items-center justify-center relative overflow-hidden">
+    <div className="min-h-screen w-full bg-slate-900 bg-[url('/pegasus-plane.jpg')] bg-cover bg-center bg-no-repeat flex items-center justify-center relative overflow-hidden">
       
       {/* Dark overlay for contrast */}
-      <div className="absolute inset-0 bg-slate-900/70 backdrop-blur-[2px]"></div>
-
-      {/* Cabin window frame - left panel: oval window with Pegasus tail visible outside */}
-      <div className="absolute left-0 top-0 bottom-0 w-[300px] pointer-events-none z-0" style={{
-        background: 'radial-gradient(ellipse at 30% 50%, rgba(15,23,42,0) 0%, rgba(15,23,42,0.98) 72%)',
-      }}>
-        {/* Oval window outer frame */}
-        <div className="absolute left-10 top-1/2 -translate-y-1/2" style={{ width: '190px', height: '240px' }}>
-          {/* Window border - thick plastic frame */}
-          <div className="absolute inset-0 rounded-[50%] border-[14px] border-slate-500/70" style={{
-            boxShadow: 'inset 0 0 30px rgba(0,0,0,0.7), inset 0 0 80px rgba(0,0,0,0.3), 0 0 40px rgba(0,0,0,0.5)',
-          }}/>
-          {/* Sky visible through window */}
-          <div className="absolute inset-[14px] rounded-[50%] overflow-hidden" style={{
-            background: 'linear-gradient(180deg, rgba(56,130,200,0.25) 0%, rgba(100,160,230,0.15) 60%, rgba(200,220,255,0.08) 100%)',
-          }}>
-            {/* Pegasus aircraft TAIL silhouette visible through window */}
-            <svg viewBox="0 0 160 200" width="100%" height="100%" xmlns="http://www.w3.org/2000/svg" style={{ opacity: 0.55 }}>
-              {/* Main tail fin (vertical stabilizer) */}
-              <polygon points="72,170 88,170 95,80 65,80" fill="white"/>
-              {/* Tail fin top sweep */}
-              <path d="M65,80 Q78,20 88,30 L95,80 Z" fill="white"/>
-              {/* Fuselage rear section (tapered tube) */}
-              <ellipse cx="80" cy="168" rx="18" ry="8" fill="white"/>
-              <rect x="62" y="130" width="36" height="40" rx="4" fill="white"/>
-              {/* Left horizontal stabilizer */}
-              <polygon points="62,148 10,135 10,128 62,140" fill="rgba(255,255,255,0.85)"/>
-              {/* Right horizontal stabilizer */}
-              <polygon points="98,148 150,135 150,128 98,140" fill="rgba(255,255,255,0.85)"/>
-              {/* Engine exhaust glow */}
-              <ellipse cx="80" cy="176" rx="8" ry="4" fill="rgba(255,200,100,0.4)"/>
-              {/* Fuselage windows row (tiny) */}
-              <rect x="66" y="143" width="6" height="4" rx="1" fill="rgba(147,210,255,0.7)"/>
-              <rect x="75" y="143" width="6" height="4" rx="1" fill="rgba(147,210,255,0.7)"/>
-              <rect x="84" y="143" width="6" height="4" rx="1" fill="rgba(147,210,255,0.7)"/>
-              {/* Distance haze */}
-              <ellipse cx="80" cy="160" rx="40" ry="60" fill="rgba(150,190,255,0.05)"/>
-            </svg>
-          </div>
-          {/* Window glare/reflection */}
-          <div className="absolute inset-[14px] rounded-[50%]" style={{
-            background: 'linear-gradient(135deg, rgba(255,255,255,0.12) 0%, transparent 50%)',
-          }}/>
-          {/* Inner window seal ring */}
-          <div className="absolute inset-[10px] rounded-[50%] border border-slate-400/20"/>
-        </div>
-      </div>
+      <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-[1px]"></div>
 
 
       <div className="relative z-10 max-w-6xl w-full px-6 flex flex-col items-center">
