@@ -877,10 +877,10 @@ export default function CrewDelayTab() {
                               {f.delayCode}
                             </span>
                           </td>
-                          <td className="text-xs truncate" style={{ minWidth: '200px', maxWidth: '200px', width: '200px' }} title={CREW_DELAY_CODE_DESCRIPTIONS[f.delayCode] || '—'}>
+                          <td className="text-xs text-center overflow-hidden" style={{ minWidth: '200px', maxWidth: '200px', width: '200px' }} title={CREW_DELAY_CODE_DESCRIPTIONS[f.delayCode] || '—'}>
                             <span className="text-slate-400 italic text-[11px]">{CREW_DELAY_CODE_DESCRIPTIONS[f.delayCode] || '—'}</span>
                           </td>
-                          <td className="text-xs truncate" style={{ minWidth: '200px', maxWidth: '200px', width: '200px' }} title={f.delayDescription || '—'}>
+                          <td className="text-xs text-center overflow-hidden" style={{ minWidth: '200px', maxWidth: '200px', width: '200px' }} title={f.delayDescription || '—'}>
                             <span className="text-slate-700 text-[11px]">{f.delayDescription || '—'}</span>
                           </td>
                           <td>
