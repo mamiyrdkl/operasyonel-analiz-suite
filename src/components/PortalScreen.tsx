@@ -1,8 +1,8 @@
 'use client';
-import { Building2, ArrowRight, PlaneTakeoff, ClipboardList } from 'lucide-react';
+import { Building2, ArrowRight, PlaneTakeoff, ClipboardList, Link2 } from 'lucide-react';
 
 interface PortalScreenProps {
-  onSelectApp: (app: 'ANALYSIS_SUITE' | 'HOTEL' | 'CHECK_IN' | 'DELAY_TRACKING') => void;
+  onSelectApp: (app: 'ANALYSIS_SUITE' | 'HOTEL' | 'CHECK_IN' | 'DELAY_TRACKING' | 'CREW_CONNECTION') => void;
 }
 
 export default function PortalScreen({ onSelectApp }: PortalScreenProps) {
@@ -27,7 +27,7 @@ export default function PortalScreen({ onSelectApp }: PortalScreenProps) {
         </div>
 
         {/* CARDS */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 w-full max-w-6xl animate-in fade-in slide-in-from-bottom-12 duration-1000 delay-200">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-5 w-full max-w-7xl animate-in fade-in slide-in-from-bottom-12 duration-1000 delay-200">
           
           {/* ANALYSIS SUITE CARD */}
           <div 
@@ -110,6 +110,27 @@ export default function PortalScreen({ onSelectApp }: PortalScreenProps) {
              </p>
              
              <div className="mt-auto flex items-center justify-center gap-2 bg-white/10 px-5 py-2.5 text-sm rounded-full text-white font-bold group-hover:bg-amber-600 transition-colors">
+                Uygulamaya Git <ArrowRight size={16} />
+             </div>
+        </div>
+
+          {/* CREW CONNECTION CARD */}
+          <div 
+            onClick={() => onSelectApp('CREW_CONNECTION')}
+            className="group cursor-pointer bg-white/10 backdrop-blur-md rounded-3xl p-8 border border-white/20 hover:bg-white/20 hover:border-white/40 transition-all duration-300 shadow-2xl hover:-translate-y-2 relative overflow-hidden flex flex-col items-center text-center"
+          >
+             <div className="absolute inset-0 bg-gradient-to-br from-cyan-600/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+             
+             <div className="w-16 h-16 bg-gradient-to-br from-cyan-500 to-blue-700 rounded-2xl flex items-center justify-center mb-6 shadow-lg shadow-cyan-600/30 group-hover:scale-110 transition-transform duration-500">
+                <Link2 className="w-8 h-8 text-white" strokeWidth={2.5} />
+             </div>
+             
+             <h2 className="text-2xl font-black text-white mb-3 tracking-tight drop-shadow-md">Ekip Bağlantı Takip</h2>
+             <p className="text-slate-300 leading-relaxed font-medium mb-6 text-sm">
+                Uçuş bağlantı sürelerini analiz eden, FDP risk değerlendirmesi yapan ekip operasyon izleme modülü.
+             </p>
+             
+             <div className="mt-auto flex items-center justify-center gap-2 bg-white/10 px-5 py-2.5 text-sm rounded-full text-white font-bold group-hover:bg-cyan-600 transition-colors">
                 Uygulamaya Git <ArrowRight size={16} />
              </div>
           </div>

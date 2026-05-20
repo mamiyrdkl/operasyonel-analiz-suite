@@ -8,10 +8,11 @@ import CrewDelayTab from '@/components/CrewDelayTab';
 import HotelReservationTab from '@/components/HotelReservationTab';
 import CheckInReportTab from '@/components/CheckInReportTab';
 import DelayTrackingTab from '@/components/DelayTrackingTab';
+import CrewConnectionTab from '@/components/CrewConnectionTab';
 import PortalScreen from '@/components/PortalScreen';
 import SettingsModal from '@/components/SettingsModal';
 
-export type AppType = 'PORTAL' | 'ANALYSIS_SUITE' | 'HOTEL' | 'CHECK_IN' | 'DELAY_TRACKING';
+export type AppType = 'PORTAL' | 'ANALYSIS_SUITE' | 'HOTEL' | 'CHECK_IN' | 'DELAY_TRACKING' | 'CREW_CONNECTION';
 
 export default function DashboardPage() {
   const [currentApp, setCurrentApp] = useState<AppType>('PORTAL');
@@ -48,6 +49,8 @@ export default function DashboardPage() {
         {currentApp === 'CHECK_IN' && <CheckInReportTab />}
 
         {currentApp === 'DELAY_TRACKING' && <DelayTrackingTab />}
+
+        {currentApp === 'CREW_CONNECTION' && <CrewConnectionTab />}
 
         {currentApp === 'ANALYSIS_SUITE' && (
            <>

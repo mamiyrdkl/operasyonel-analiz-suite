@@ -1,6 +1,6 @@
 'use client';
 
-import { PieChart, ArrowLeftRight, Settings, CalendarDays, Clock, Building2, LogOut, PlaneTakeoff, ClipboardList } from 'lucide-react';
+import { PieChart, ArrowLeftRight, Settings, CalendarDays, Clock, Building2, LogOut, PlaneTakeoff, ClipboardList, Link2 } from 'lucide-react';
 import { AppType } from '@/app/page';
 
 interface SidebarProps {
@@ -93,6 +93,7 @@ export default function Sidebar({ currentApp, goBackToPortal, activeTab, setActi
                {currentApp === 'HOTEL' ? 'Otel Paneli' 
                : currentApp === 'CHECK_IN' ? 'Check-In Paneli' 
                : currentApp === 'DELAY_TRACKING' ? 'Gecikme Takip'
+               : currentApp === 'CREW_CONNECTION' ? 'Bağlantı Takip'
                : 'Ekip Gecikme Takip'}
             </span>
            <span className="text-[10px] text-slate-400">v2.1 Workspace</span>
@@ -156,6 +157,18 @@ export default function Sidebar({ currentApp, goBackToPortal, activeTab, setActi
                   <div className={getLinkClasses(true)}>
                     <ClipboardList className="w-5 h-5 text-center" /> 
                     <span>Gecikme Takip</span>
+                  </div>
+              </div>
+           </>
+        )}
+
+        {currentApp === 'CREW_CONNECTION' && (
+           <>
+              <div className="text-[10px] font-bold text-slate-500 uppercase mb-3 px-6 tracking-wider">Bağlantı Modülü</div>
+              <div className="px-4">
+                  <div className={getLinkClasses(true)}>
+                    <Link2 className="w-5 h-5 text-center" /> 
+                    <span>Ekip Bağlantı Takip</span>
                   </div>
               </div>
            </>
