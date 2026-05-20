@@ -370,8 +370,8 @@ export default function AnalysisTab() {
                           <th className="w-[50px] bg-slate-200 text-slate-800 border-b border-slate-300 text-center">STD</th>
                           <th className="w-16 bg-slate-200 text-slate-800 border-b border-slate-300 text-center">CODE</th>
                           <th className="w-[60px] bg-slate-200 text-slate-800 border-b border-slate-300 text-right pr-2">DAKİKA</th>
-                          <th className="bg-slate-200 text-slate-800 border-b border-slate-300">DESCRIPTION</th>
-                          <th className="w-48 bg-emerald-100 text-emerald-900 border-b border-emerald-200 border-l border-r">CREW REMARKS</th>
+                          <th className="w-44 bg-slate-200 text-slate-800 border-b border-slate-300 text-center">DESCRIPTION</th>
+                          <th className="w-44 bg-emerald-100 text-emerald-900 border-b border-emerald-200 border-l border-r text-center">CREW REMARKS</th>
                       </tr>
                   </thead>
                   <tbody>
@@ -401,14 +401,14 @@ export default function AnalysisTab() {
                                   <span className="bg-red-50 text-red-700 px-1.5 py-0.5 border border-red-200 rounded font-bold text-[10px]">{row.delayCode}</span>
                                </td>
                                <td className="text-right font-black text-rose-600 pr-2 text-[11px]">{row.delayTimeVal}</td>
-                               <td className="text-[10px] text-slate-600 font-medium truncate max-w-[280px]" title={row.desc}>{row.desc}</td>
-                               <td className="p-0 border-l border-r border-emerald-100 bg-emerald-50/30 align-middle min-w-[180px]">
+                               <td className="text-[10px] text-slate-600 font-medium text-center max-w-[240px]" title={row.desc}>{row.desc}</td>
+                               <td className="p-0 border-l border-r border-emerald-100 bg-emerald-50/30 align-middle w-44">
                                  <input
                                    type="text"
                                    value={row.crewRemark || ''}
                                    onChange={(e) => updateRemark(i, e.target.value)}
                                    placeholder="Crew remark yazın..."
-                                   className="w-full bg-transparent outline-none text-[10px] text-slate-700 px-2 py-1 h-full placeholder-emerald-300 focus:bg-white transition"
+                                   className="w-full bg-transparent outline-none text-[10px] text-slate-700 px-2 py-1 h-full placeholder-emerald-300 focus:bg-white transition text-center"
                                  />
                                </td>
                              </tr>
