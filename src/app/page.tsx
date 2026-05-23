@@ -12,11 +12,11 @@ import CrewConnectionTab from '@/components/CrewConnectionTab';
 import PortalScreen from '@/components/PortalScreen';
 import SettingsModal from '@/components/SettingsModal';
 
-export type AppType = 'PORTAL' | 'ANALYSIS_SUITE' | 'HOTEL' | 'CHECK_IN' | 'DELAY_TRACKING' | 'CREW_CONNECTION';
+export type AppType = 'PORTAL' | 'ANALYSIS_SUITE' | 'HOTEL' | 'CHECK_IN' | 'DELAY_TRACKING';
 
 export default function DashboardPage() {
   const [currentApp, setCurrentApp] = useState<AppType>('PORTAL');
-  const [activeTab, setActiveTab] = useState<'analysis' | 'comparison' | 'crewDelay'>('analysis');
+  const [activeTab, setActiveTab] = useState<'analysis' | 'comparison' | 'crewDelay' | 'crewConnection'>('analysis');
   const [isAdminModalOpen, setIsAdminModalOpen] = useState(false);
 
   if (currentApp === 'PORTAL') {
@@ -50,13 +50,12 @@ export default function DashboardPage() {
 
         {currentApp === 'DELAY_TRACKING' && <DelayTrackingTab />}
 
-        {currentApp === 'CREW_CONNECTION' && <CrewConnectionTab />}
-
         {currentApp === 'ANALYSIS_SUITE' && (
            <>
              {activeTab === 'analysis' && <AnalysisTab />}
              {activeTab === 'comparison' && <ComparisonTab />}
              {activeTab === 'crewDelay' && <CrewDelayTab />}
+             {activeTab === 'crewConnection' && <CrewConnectionTab />}
            </>
         )}
 

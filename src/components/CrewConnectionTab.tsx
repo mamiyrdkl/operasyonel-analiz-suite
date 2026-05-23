@@ -36,11 +36,55 @@ interface FdpRow {
 
 type TabView = 'connection' | 'fdp';
 
+// Normalize header text for matching
+function norm(s: unknown): string {
+  return String(s || '').replace(/[\s_\-\.\/]+/g, '').toUpperCase();
+}
+
+// Alias map: normalized patterns → canonical key
+const HEADER_ALIASES: Record<string, string[]> = {
+  FlightNo:   ['FLIGHTNO', 'FLT', 'FLIGHT', 'FLIGHTNUMBER', 'UCUS', 'UCUSNO', 'FLTNO'],
+  Dep:        ['DEP', 'DEPARTURE', 'FROM', 'DEPPORT', 'KALKIS', 'ORIGIN', 'DEPARTUREIATA', 'DEPARTUREPORT'],
+  Arr:        ['ARR', 'ARRIVAL', 'TO', 'ARRPORT', 'VARIS', 'DEST', 'DESTINATION', 'ARRIVALIATA', 'ARRIVALPORT'],
+  STD:        ['STD', 'SCHEDTIMEDEP', 'SCHEDULEDDEPARTURE', 'SCHEDDEP', 'SCHEDULEDTIMEOFDEPARTURE'],
+  STA:        ['STA', 'SCHEDTIMEARR', 'SCHEDULEDARRIVAL', 'SCHEDARR', 'SCHEDULEDTIMEOFARRIVAL'],
+  ATD:        ['ATD', 'ACTUALTIMEDEP', 'ACTUALDEPARTURE', 'ACTDEP', 'ACTUALTIMEOFDEPARTURE'],
+  ATA:        ['ATA', 'ACTUALTIMEARR', 'ACTUALARRIVAL', 'ACTARR', 'ACTUALTIMEOFARRIVAL'],
+  MaxFDP:     ['MAXFDP', 'FDPMAX', 'MAXIMUMFDP', 'MAXFLIGHTDUTYPERIOD'],
+  PlannedFDP: ['PLANNEDFDP', 'FDPPLANNED', 'PLANFDP', 'PFDP'],
+};
+
+function findCol(headerRow: unknown[], aliases: string[]): number {
+  for (let i = 0; i < headerRow.length; i++) {
+    const n = norm(headerRow[i]);
+    if (aliases.includes(n)) return i;
+  }
+  return -1;
+}
+
 function timeToMinutes(timeStr: string | number | undefined): number {
-  if (!timeStr && timeStr !== 0) return 0;
-  if (typeof timeStr === 'number') return Math.round((timeStr % 1) * 1440);
-  const parts = String(timeStr).split(':');
+  if (timeStr === undefined || timeStr === null || timeStr === '') return 0;
+  // Excel serial format: 0.5 = 12:00
+  if (typeof timeStr === 'number') {
+    // If > 1, might be minutes already or HHmm like 1430
+    if (timeStr > 0 && timeStr < 1) return Math.round(timeStr * 1440);
+    if (timeStr >= 100 && timeStr <= 2359) {
+      // HHmm format like 1430 → 14*60+30
+      const h = Math.floor(timeStr / 100);
+      const m = timeStr % 100;
+      return h * 60 + m;
+    }
+    return Math.round((timeStr % 1) * 1440);
+  }
+  const s = String(timeStr).trim();
+  // HH:MM or HH:MM:SS
+  const parts = s.split(':');
   if (parts.length >= 2) return parseInt(parts[0]) * 60 + parseInt(parts[1]);
+  // Pure numeric string like "1430"
+  const num = parseInt(s);
+  if (!isNaN(num) && num >= 100 && num <= 2359) {
+    return Math.floor(num / 100) * 60 + (num % 100);
+  }
   return 0;
 }
 
@@ -50,6 +94,7 @@ export default function CrewConnectionTab() {
   const [isDragging, setIsDragging] = useState(false);
   const [fileName, setFileName] = useState('');
   const [activeView, setActiveView] = useState<TabView>('connection');
+  const [statusMsg, setStatusMsg] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const connections = useMemo<ConnectionRow[]>(() => {
@@ -91,12 +136,73 @@ export default function CrewConnectionTab() {
 
   const handleFile = async (file: File) => {
     setFileName(file.name);
-    const XLSX = (await import('xlsx')).default;
-    const data = await file.arrayBuffer();
-    const workbook = XLSX.read(data, { type: 'array' });
-    const rows = XLSX.utils.sheet_to_json<RawRow>(workbook.Sheets[workbook.SheetNames[0]]);
-    setRawData(rows);
-    setIsLoaded(true);
+    setStatusMsg('İşleniyor...');
+    try {
+      const XLSX = (await import('xlsx')).default;
+      const data = await file.arrayBuffer();
+      const workbook = XLSX.read(data, { type: 'array' });
+      const sheet = workbook.Sheets[workbook.SheetNames[0]];
+      const allRows: unknown[][] = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
+
+      // Find header row (first row with >= 3 recognized columns)
+      let headerIdx = -1;
+      let colMap: Record<string, number> = {};
+
+      for (let r = 0; r < Math.min(20, allRows.length); r++) {
+        const row = allRows[r];
+        if (!row || !Array.isArray(row)) continue;
+        const tempMap: Record<string, number> = {};
+        let matchCount = 0;
+        for (const [canonical, aliases] of Object.entries(HEADER_ALIASES)) {
+          const idx = findCol(row, aliases);
+          if (idx !== -1) {
+            tempMap[canonical] = idx;
+            matchCount++;
+          }
+        }
+        if (matchCount >= 3 && matchCount > Object.keys(colMap).length) {
+          headerIdx = r;
+          colMap = tempMap;
+        }
+      }
+
+      if (headerIdx === -1) {
+        setStatusMsg('Başlık satırı bulunamadı! Excel sütunlarını kontrol edin.');
+        return;
+      }
+
+      // Parse data rows
+      const parsed: RawRow[] = [];
+      for (let r = headerIdx + 1; r < allRows.length; r++) {
+        const row = allRows[r];
+        if (!row || !Array.isArray(row)) continue;
+
+        const flight = colMap.FlightNo !== undefined ? row[colMap.FlightNo] : undefined;
+        if (!flight) continue; // skip empty rows
+
+        parsed.push({
+          FlightNo: String(flight),
+          Dep: colMap.Dep !== undefined ? String(row[colMap.Dep] || '') : '',
+          Arr: colMap.Arr !== undefined ? String(row[colMap.Arr] || '') : '',
+          STD: colMap.STD !== undefined ? row[colMap.STD] as string | number : undefined,
+          STA: colMap.STA !== undefined ? row[colMap.STA] as string | number : undefined,
+          ATD: colMap.ATD !== undefined ? row[colMap.ATD] as string | number : undefined,
+          ATA: colMap.ATA !== undefined ? row[colMap.ATA] as string | number : undefined,
+          MaxFDP: colMap.MaxFDP !== undefined ? row[colMap.MaxFDP] as string | number : undefined,
+          PlannedFDP: colMap.PlannedFDP !== undefined ? row[colMap.PlannedFDP] as string | number : undefined,
+        });
+      }
+
+      console.log('Column mapping:', colMap);
+      console.log('Parsed rows:', parsed.length, 'Sample:', parsed[0]);
+
+      setRawData(parsed);
+      setIsLoaded(true);
+      setStatusMsg(`${parsed.length} satır başarıyla işlendi. Eşleşen sütunlar: ${Object.keys(colMap).join(', ')}`);
+    } catch (err) {
+      console.error('Excel parse error:', err);
+      setStatusMsg('Hata: Dosya okunamadı.');
+    }
   };
 
   const handleDrop = (e: React.DragEvent) => {
