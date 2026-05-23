@@ -1,216 +1,189 @@
 'use client';
-
 import { useState, useRef, useMemo } from 'react';
-import { Upload, Link2, ShieldAlert, AlertTriangle, CheckCircle2, Clock, Plane } from 'lucide-react';
+import { Upload, Link2, ShieldAlert, AlertTriangle, CheckCircle2, Clock, Plane, Timer } from 'lucide-react';
 
-interface RawRow {
-  FlightNo?: string;
-  Dep?: string;
-  Arr?: string;
-  STD?: string | number;
-  STA?: string | number;
-  ATD?: string | number;
-  ATA?: string | number;
-  MaxFDP?: string | number;
-  PlannedFDP?: string | number;
-  [key: string]: unknown;
-}
+type TabView = 'connection' | 'fdp' | 'mesai';
 
-interface ConnectionRow {
-  id: number;
-  airport: string;
-  flight1: string;
-  flight2: string;
-  plannedMin: number;
-  actualMin: number;
-}
+/* ── Generic row from Excel ── */
+interface GRow { [key: string]: unknown; }
 
-interface FdpRow {
-  id: number;
-  flight: string;
-  maxFdp: number;
-  plannedFdp: number;
-  remaining: number;
-  isRisk: boolean;
-}
-
-type TabView = 'connection' | 'fdp';
-
-// Normalize header text for matching
+/* ── Normalize a header string for fuzzy matching ── */
 function norm(s: unknown): string {
-  return String(s || '').replace(/[\s_\-\.\/]+/g, '').toUpperCase();
+  return String(s ?? '').replace(/[\s_\-\.\/\(\)]+/g, '').toUpperCase();
 }
 
-// Alias map: normalized patterns → canonical key
-const HEADER_ALIASES: Record<string, string[]> = {
-  FlightNo:   ['FLIGHTNO', 'FLT', 'FLIGHT', 'FLIGHTNUMBER', 'UCUS', 'UCUSNO', 'FLTNO'],
-  Dep:        ['DEP', 'DEPARTURE', 'FROM', 'DEPPORT', 'KALKIS', 'ORIGIN', 'DEPARTUREIATA', 'DEPARTUREPORT'],
-  Arr:        ['ARR', 'ARRIVAL', 'TO', 'ARRPORT', 'VARIS', 'DEST', 'DESTINATION', 'ARRIVALIATA', 'ARRIVALPORT'],
-  STD:        ['STD', 'SCHEDTIMEDEP', 'SCHEDULEDDEPARTURE', 'SCHEDDEP', 'SCHEDULEDTIMEOFDEPARTURE'],
-  STA:        ['STA', 'SCHEDTIMEARR', 'SCHEDULEDARRIVAL', 'SCHEDARR', 'SCHEDULEDTIMEOFARRIVAL'],
-  ATD:        ['ATD', 'ACTUALTIMEDEP', 'ACTUALDEPARTURE', 'ACTDEP', 'ACTUALTIMEOFDEPARTURE'],
-  ATA:        ['ATA', 'ACTUALTIMEARR', 'ACTUALARRIVAL', 'ACTARR', 'ACTUALTIMEOFARRIVAL'],
-  MaxFDP:     ['MAXFDP', 'FDPMAX', 'MAXIMUMFDP', 'MAXFLIGHTDUTYPERIOD'],
-  PlannedFDP: ['PLANNEDFDP', 'FDPPLANNED', 'PLANFDP', 'PFDP'],
-};
-
-function findCol(headerRow: unknown[], aliases: string[]): number {
-  for (let i = 0; i < headerRow.length; i++) {
-    const n = norm(headerRow[i]);
-    if (aliases.includes(n)) return i;
+/* ── Try to find a column index by fuzzy-matching a set of aliases ── */
+function findCol(headers: string[], aliases: string[]): number {
+  for (let i = 0; i < headers.length; i++) {
+    const n = norm(headers[i]);
+    for (const a of aliases) { if (n === a || n.includes(a)) return i; }
   }
   return -1;
 }
 
-function timeToMinutes(timeStr: string | number | undefined): number {
-  if (timeStr === undefined || timeStr === null || timeStr === '') return 0;
-  // Excel serial format: 0.5 = 12:00
-  if (typeof timeStr === 'number') {
-    // If > 1, might be minutes already or HHmm like 1430
-    if (timeStr > 0 && timeStr < 1) return Math.round(timeStr * 1440);
-    if (timeStr >= 100 && timeStr <= 2359) {
-      // HHmm format like 1430 → 14*60+30
-      const h = Math.floor(timeStr / 100);
-      const m = timeStr % 100;
-      return h * 60 + m;
-    }
-    return Math.round((timeStr % 1) * 1440);
+/* ── Convert ANY time representation to minutes ── */
+function timeToMin(v: unknown): number {
+  if (v === undefined || v === null || v === '') return NaN;
+  if (typeof v === 'number') {
+    if (v > 0 && v < 1) return Math.round(v * 1440);          // Excel serial
+    if (v >= 100 && v <= 2359) return Math.floor(v/100)*60 + v%100; // HHmm
+    if (v > 2359) return Math.round((v % 1) * 1440);           // date+time serial
+    return v; // already minutes?
   }
-  const s = String(timeStr).trim();
-  // HH:MM or HH:MM:SS
+  const s = String(v).trim();
   const parts = s.split(':');
-  if (parts.length >= 2) return parseInt(parts[0]) * 60 + parseInt(parts[1]);
-  // Pure numeric string like "1430"
+  if (parts.length >= 2) return parseInt(parts[0])*60 + parseInt(parts[1]);
   const num = parseInt(s);
-  if (!isNaN(num) && num >= 100 && num <= 2359) {
-    return Math.floor(num / 100) * 60 + (num % 100);
-  }
-  return 0;
+  if (!isNaN(num) && num >= 100 && num <= 2359) return Math.floor(num/100)*60 + num%100;
+  return NaN;
 }
 
+/* ── Column alias definitions ── */
+const ALIASES: Record<string, string[]> = {
+  flight:  ['FLIGHTNO','FLT','FLIGHT','FLIGHTNUMBER','UCUS','UCUSNO','FLTNO','FLTNUMBER','SEFER'],
+  dep:     ['DEP','DEPARTURE','FROM','DEPPORT','KALKIS','ORIGIN','DEPARTUREPORT','DEPARTUREIATA'],
+  arr:     ['ARR','ARRIVAL','TO','ARRPORT','VARIS','DEST','DESTINATION','ARRIVALPORT','ARRIVALIATA'],
+  std:     ['STD','SCHEDTIMEDEP','SCHEDULEDDEPARTURE','SCHEDDEP','PLANKALKS','PLANKALKIS'],
+  sta:     ['STA','SCHEDTIMEARR','SCHEDULEDARRIVAL','SCHEDARR','PLANVARIS'],
+  atd:     ['ATD','ACTUALTIMEDEP','ACTUALDEPARTURE','ACTDEP','GERCEKKALKS','GERCEKKALKIS'],
+  ata:     ['ATA','ACTUALTIMEARR','ACTUALARRIVAL','ACTARR','GERCEKVARIS'],
+  maxfdp:  ['MAXFDP','FDPMAX','MAXIMUMFDP','MAXFLIGHTDUTYPERIOD'],
+  planfdp: ['PLANNEDFDP','FDPPLANNED','PLANFDP','PFDP'],
+  duty:    ['DUTYTIME','DUTY','MESAI','GOREV','WORKHOURS','DUTYPERIOD','GOREVS'],
+  crew:    ['CREWID','CREW','EKIPID','EKIP','CREWNAME','EKIPAD','PILOTID','NAME','ISIM','PERSONEL'],
+  report:  ['REPORTTIME','REPORT','REPORTIN','CHECKIN','GIRIS','BASLANGIC'],
+  debrief: ['DEBRIEFING','DEBRIEF','CHECKOUT','CIKIS','BITIS','RELEASETIIME','RELEASE'],
+};
+
 export default function CrewConnectionTab() {
-  const [rawData, setRawData] = useState<RawRow[]>([]);
+  const [allRows, setAllRows] = useState<unknown[][]>([]);
+  const [headers, setHeaders] = useState<string[]>([]);
+  const [colMap, setColMap] = useState<Record<string, number>>({});
   const [isLoaded, setIsLoaded] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const [fileName, setFileName] = useState('');
-  const [activeView, setActiveView] = useState<TabView>('connection');
   const [statusMsg, setStatusMsg] = useState('');
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [activeView, setActiveView] = useState<TabView>('connection');
+  const fileRef = useRef<HTMLInputElement>(null);
 
-  const connections = useMemo<ConnectionRow[]>(() => {
-    const result: ConnectionRow[] = [];
-    for (let i = 0; i < rawData.length - 1; i++) {
-      if (rawData[i].Arr && rawData[i].Arr === rawData[i + 1].Dep) {
-        const pS = timeToMinutes(rawData[i + 1].STD) - timeToMinutes(rawData[i].STA);
-        const gS = timeToMinutes(rawData[i + 1].ATD) - timeToMinutes(rawData[i].ATA);
+  /* ── Helper to get cell value ── */
+  const cell = (rowIdx: number, key: string): unknown => {
+    const ci = colMap[key];
+    if (ci === undefined || !allRows[rowIdx]) return undefined;
+    return allRows[rowIdx][ci];
+  };
+  const cellStr = (ri: number, k: string) => String(cell(ri,k) ?? '').trim();
+
+  /* ── Connection Analysis ── */
+  const connections = useMemo(() => {
+    if (colMap.arr === undefined || colMap.dep === undefined) return [];
+    const result: {id:number; airport:string; f1:string; f2:string; plan:number; actual:number}[] = [];
+    for (let i = 0; i < allRows.length - 1; i++) {
+      const arrVal = cellStr(i, 'arr');
+      const depVal = cellStr(i+1, 'dep');
+      if (arrVal && arrVal === depVal) {
+        const plan = timeToMin(cell(i+1,'std')) - timeToMin(cell(i,'sta'));
+        const actual = timeToMin(cell(i+1,'atd')) - timeToMin(cell(i,'ata'));
         result.push({
-          id: i,
-          airport: String(rawData[i].Arr || '-'),
-          flight1: String(rawData[i].FlightNo || '-'),
-          flight2: String(rawData[i + 1].FlightNo || '-'),
-          plannedMin: pS,
-          actualMin: gS,
+          id: i, airport: arrVal,
+          f1: cellStr(i,'flight') || '-', f2: cellStr(i+1,'flight') || '-',
+          plan: isNaN(plan)?0:plan, actual: isNaN(actual)?0:actual,
         });
       }
     }
     return result;
-  }, [rawData]);
+  }, [allRows, colMap]);
 
-  const fdpRows = useMemo<FdpRow[]>(() => {
-    return rawData
-      .filter(r => r.MaxFDP || r.PlannedFDP)
-      .map((row, i) => {
-        const max = parseFloat(String(row.MaxFDP)) || 0;
-        const planned = parseFloat(String(row.PlannedFDP)) || 0;
-        const remaining = max - planned;
-        return {
-          id: i,
-          flight: String(row.FlightNo || '-'),
-          maxFdp: max,
-          plannedFdp: planned,
-          remaining,
-          isRisk: remaining < 60,
-        };
-      });
-  }, [rawData]);
+  /* ── FDP Risk ── */
+  const fdpRows = useMemo(() => {
+    if (colMap.maxfdp === undefined && colMap.planfdp === undefined) return [];
+    return allRows.filter((_,i) => {
+      const m = parseFloat(String(cell(i,'maxfdp'))); 
+      const p = parseFloat(String(cell(i,'planfdp')));
+      return !isNaN(m) || !isNaN(p);
+    }).map((_,idx) => {
+      const m = parseFloat(String(cell(idx,'maxfdp'))) || 0;
+      const p = parseFloat(String(cell(idx,'planfdp'))) || 0;
+      return { id:idx, flight:cellStr(idx,'flight')||'-', max:m, planned:p, rem:m-p, risk:m-p<60 };
+    });
+  }, [allRows, colMap]);
 
+  /* ── Mesai (Duty/Work Hours) Analysis ── */
+  const mesaiRows = useMemo(() => {
+    // Try to calculate duty from report→debrief, or use explicit duty column
+    const hasDuty = colMap.duty !== undefined;
+    const hasReport = colMap.report !== undefined && colMap.debrief !== undefined;
+    if (!hasDuty && !hasReport) return [];
+    
+    return allRows.map((_, i) => {
+      const crew = cellStr(i, 'crew') || cellStr(i, 'flight') || `Satır ${i+1}`;
+      const flight = cellStr(i, 'flight') || '-';
+      let dutyMin = 0;
+      
+      if (hasDuty) {
+        const raw = cell(i, 'duty');
+        const parsed = timeToMin(raw);
+        dutyMin = isNaN(parsed) ? (parseFloat(String(raw))||0) : parsed;
+      } else if (hasReport) {
+        const rpt = timeToMin(cell(i, 'report'));
+        const dbr = timeToMin(cell(i, 'debrief'));
+        dutyMin = (!isNaN(rpt) && !isNaN(dbr)) ? dbr - rpt : 0;
+        if (dutyMin < 0) dutyMin += 1440; // midnight crossing
+      }
+      
+      const hours = Math.floor(dutyMin / 60);
+      const mins = Math.round(dutyMin % 60);
+      const isLong = dutyMin > 720; // >12 saat
+      
+      return { id:i, crew, flight, dutyMin, display:`${hours}s ${mins}dk`, isLong };
+    }).filter(r => r.dutyMin > 0);
+  }, [allRows, colMap]);
+
+  /* ── Excel file handler — reads ANY Excel ── */
   const handleFile = async (file: File) => {
     setFileName(file.name);
     setStatusMsg('İşleniyor...');
     try {
       const XLSX = (await import('xlsx')).default;
-      const data = await file.arrayBuffer();
-      const workbook = XLSX.read(data, { type: 'array' });
-      const sheet = workbook.Sheets[workbook.SheetNames[0]];
-      const allRows: unknown[][] = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
+      const buf = await file.arrayBuffer();
+      const wb = XLSX.read(buf, { type: 'array' });
+      const sheet = wb.Sheets[wb.SheetNames[0]];
+      const raw: unknown[][] = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
 
-      // Find header row (first row with >= 3 recognized columns)
-      let headerIdx = -1;
-      let colMap: Record<string, number> = {};
-
-      for (let r = 0; r < Math.min(20, allRows.length); r++) {
-        const row = allRows[r];
-        if (!row || !Array.isArray(row)) continue;
-        const tempMap: Record<string, number> = {};
-        let matchCount = 0;
-        for (const [canonical, aliases] of Object.entries(HEADER_ALIASES)) {
-          const idx = findCol(row, aliases);
-          if (idx !== -1) {
-            tempMap[canonical] = idx;
-            matchCount++;
-          }
+      // Find header row: scan first 30 rows, pick the one with most alias matches
+      let bestRow = 0, bestMap: Record<string,number> = {}, bestScore = 0;
+      for (let r = 0; r < Math.min(30, raw.length); r++) {
+        const row = raw[r];
+        if (!row || !Array.isArray(row) || row.length < 2) continue;
+        const hdr = row.map(c => String(c ?? ''));
+        const tempMap: Record<string,number> = {};
+        let score = 0;
+        for (const [key, aliases] of Object.entries(ALIASES)) {
+          const idx = findCol(hdr, aliases);
+          if (idx !== -1) { tempMap[key] = idx; score++; }
         }
-        if (matchCount >= 3 && matchCount > Object.keys(colMap).length) {
-          headerIdx = r;
-          colMap = tempMap;
-        }
+        if (score > bestScore) { bestScore = score; bestRow = r; bestMap = tempMap; }
       }
 
-      if (headerIdx === -1) {
-        setStatusMsg('Başlık satırı bulunamadı! Excel sütunlarını kontrol edin.');
-        return;
-      }
+      // Even if no aliases matched, use row 0 as header and show raw data
+      const headerRowIdx = bestScore >= 1 ? bestRow : 0;
+      const hdrRow = (raw[headerRowIdx] || []).map(c => String(c ?? ''));
+      const dataRows = raw.slice(headerRowIdx + 1).filter(r => Array.isArray(r) && r.some(c => c !== ''));
 
-      // Parse data rows
-      const parsed: RawRow[] = [];
-      for (let r = headerIdx + 1; r < allRows.length; r++) {
-        const row = allRows[r];
-        if (!row || !Array.isArray(row)) continue;
-
-        const flight = colMap.FlightNo !== undefined ? row[colMap.FlightNo] : undefined;
-        if (!flight) continue; // skip empty rows
-
-        parsed.push({
-          FlightNo: String(flight),
-          Dep: colMap.Dep !== undefined ? String(row[colMap.Dep] || '') : '',
-          Arr: colMap.Arr !== undefined ? String(row[colMap.Arr] || '') : '',
-          STD: colMap.STD !== undefined ? row[colMap.STD] as string | number : undefined,
-          STA: colMap.STA !== undefined ? row[colMap.STA] as string | number : undefined,
-          ATD: colMap.ATD !== undefined ? row[colMap.ATD] as string | number : undefined,
-          ATA: colMap.ATA !== undefined ? row[colMap.ATA] as string | number : undefined,
-          MaxFDP: colMap.MaxFDP !== undefined ? row[colMap.MaxFDP] as string | number : undefined,
-          PlannedFDP: colMap.PlannedFDP !== undefined ? row[colMap.PlannedFDP] as string | number : undefined,
-        });
-      }
-
-      console.log('Column mapping:', colMap);
-      console.log('Parsed rows:', parsed.length, 'Sample:', parsed[0]);
-
-      setRawData(parsed);
+      setHeaders(hdrRow);
+      setColMap(bestMap);
+      setAllRows(dataRows);
       setIsLoaded(true);
-      setStatusMsg(`${parsed.length} satır başarıyla işlendi. Eşleşen sütunlar: ${Object.keys(colMap).join(', ')}`);
+
+      const matched = Object.keys(bestMap);
+      setStatusMsg(`${dataRows.length} satır okundu. Eşleşen: ${matched.length > 0 ? matched.join(', ') : 'Otomatik eşleşme yok — ham veri gösteriliyor'}`);
     } catch (err) {
-      console.error('Excel parse error:', err);
-      setStatusMsg('Hata: Dosya okunamadı.');
+      console.error(err);
+      setStatusMsg('Hata: Dosya okunamadı. ' + String(err));
     }
   };
 
-  const handleDrop = (e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDragging(false);
-    const file = e.dataTransfer.files[0];
-    if (file) handleFile(file);
-  };
+  const onDrop = (e: React.DragEvent) => { e.preventDefault(); setIsDragging(false); const f = e.dataTransfer.files[0]; if(f) handleFile(f); };
 
   // ===== UPLOAD SCREEN =====
   if (!isLoaded) {
@@ -222,59 +195,35 @@ export default function CrewConnectionTab() {
               <Link2 className="w-10 h-10 text-white" />
             </div>
             <h2 className="text-2xl font-black text-slate-800 mb-2">Ekip Bağlantı Takip</h2>
-            <p className="text-sm text-slate-500">
-              Uçuş bağlantı sürelerini ve FDP risk analizini görüntüleyin
-            </p>
+            <p className="text-sm text-slate-500">Bağlantı analizi, FDP risk ve mesai takibi</p>
           </div>
-
           <div
-            className={`upload-box rounded-2xl p-12 text-center transition-all cursor-pointer ${
-              isDragging ? 'active border-cyan-500 bg-cyan-50 scale-[1.02]' : 'border-slate-300 hover:border-cyan-400'
-            }`}
+            className={`upload-box rounded-2xl p-12 text-center transition-all cursor-pointer ${isDragging ? 'active border-cyan-500 bg-cyan-50 scale-[1.02]' : 'border-slate-300 hover:border-cyan-400'}`}
             onDragOver={e => { e.preventDefault(); setIsDragging(true); }}
             onDragLeave={() => setIsDragging(false)}
-            onDrop={handleDrop}
-            onClick={() => fileInputRef.current?.click()}
+            onDrop={onDrop}
+            onClick={() => fileRef.current?.click()}
           >
-            <input ref={fileInputRef} type="file" accept=".xlsx,.xls,.csv" className="hidden" onChange={e => { const f = e.target.files?.[0]; if (f) handleFile(f); }} />
-            <Upload className={`w-12 h-12 mx-auto mb-4 transition-colors ${isDragging ? 'text-cyan-500' : 'text-slate-400'}`} />
-            <p className="text-sm font-semibold text-slate-700 mb-1">
-              {isDragging ? 'Dosyayı bırakın...' : 'Excel dosyanızı sürükleyin veya tıklayın'}
-            </p>
-            <p className="text-xs text-slate-400">.xlsx, .xls, .csv formatları desteklenir</p>
+            <input ref={fileRef} type="file" accept=".xlsx,.xls,.csv" className="hidden" onChange={e => { const f=e.target.files?.[0]; if(f) handleFile(f); }} />
+            <Upload className={`w-12 h-12 mx-auto mb-4 ${isDragging ? 'text-cyan-500' : 'text-slate-400'}`} />
+            <p className="text-sm font-semibold text-slate-700 mb-1">{isDragging ? 'Dosyayı bırakın...' : 'Excel dosyanızı sürükleyin veya tıklayın'}</p>
+            <p className="text-xs text-slate-400">Her türlü Excel formatı desteklenir</p>
           </div>
-
-          <div className="mt-8 bg-slate-50 rounded-xl p-5 border border-slate-200 text-left">
-            <h4 className="text-xs font-bold text-slate-600 uppercase tracking-wider mb-3">📌 Beklenen Sütunlar</h4>
-            <div className="grid grid-cols-2 gap-2 text-xs text-slate-500">
-              {['FlightNo', 'Dep / Arr', 'STD / STA', 'ATD / ATA', 'MaxFDP', 'PlannedFDP'].map(col => (
-                <div key={col} className="flex items-center gap-2">
-                  <span className="w-1.5 h-1.5 bg-cyan-500 rounded-full" />
-                  <span>{col}</span>
-                </div>
-              ))}
-            </div>
-          </div>
+          {statusMsg && <p className="mt-4 text-sm text-red-500 font-medium">{statusMsg}</p>}
         </div>
       </div>
     );
   }
 
+  // ===== STATS =====
+  const connStats = { total: connections.length, tight: connections.filter(c=>c.actual<30&&c.actual>=0).length, missed: connections.filter(c=>c.actual<0).length };
+  const fdpStats = { total: fdpRows.length, risk: fdpRows.filter(r=>r.risk).length };
+  const mesaiStats = { total: mesaiRows.length, long: mesaiRows.filter(r=>r.isLong).length };
+
   // ===== MAIN SCREEN =====
-  const connStats = {
-    total: connections.length,
-    tight: connections.filter(c => c.actualMin < 30).length,
-    missed: connections.filter(c => c.actualMin < 0).length,
-  };
-
-  const fdpStats = {
-    total: fdpRows.length,
-    risk: fdpRows.filter(r => r.isRisk).length,
-  };
-
   return (
     <div className="flex-1 flex flex-col overflow-hidden">
-      {/* HEADER BAR */}
+      {/* HEADER */}
       <div className="bg-white border-b border-slate-200 px-6 py-3 flex items-center justify-between shrink-0">
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-2">
@@ -283,168 +232,104 @@ export default function CrewConnectionTab() {
             </div>
             <div>
               <h1 className="text-sm font-bold text-slate-800">Ekip Bağlantı Takip</h1>
-              <p className="text-[10px] text-slate-400">{fileName} • {rawData.length} satır yüklendi</p>
+              <p className="text-[10px] text-slate-400">{fileName} • {allRows.length} satır</p>
             </div>
           </div>
-
-          {/* View Tabs */}
           <div className="flex bg-slate-100 rounded-lg p-0.5 ml-4">
-            <button
-              onClick={() => setActiveView('connection')}
-              className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md transition-all ${
-                activeView === 'connection' ? 'bg-white text-cyan-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'
-              }`}
-            >
-              <Link2 className="w-3.5 h-3.5" /> Bağlantı Analizi
-            </button>
-            <button
-              onClick={() => setActiveView('fdp')}
-              className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md transition-all ${
-                activeView === 'fdp' ? 'bg-white text-cyan-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'
-              }`}
-            >
-              <ShieldAlert className="w-3.5 h-3.5" /> FDP Risk Analizi
-            </button>
+            {([['connection','Bağlantı',Link2],['fdp','FDP Risk',ShieldAlert],['mesai','Mesai',Timer]] as const).map(([key,label,Icon]) => (
+              <button key={key} onClick={()=>setActiveView(key as TabView)}
+                className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md transition-all ${activeView===key?'bg-white text-cyan-600 shadow-sm':'text-slate-500 hover:text-slate-700'}`}>
+                <Icon className="w-3.5 h-3.5" /> {label}
+              </button>
+            ))}
           </div>
         </div>
-
-        <button
-          onClick={() => { setIsLoaded(false); setRawData([]); setFileName(''); }}
-          className="flex items-center gap-1.5 px-3 py-1.5 text-xs border border-slate-300 text-slate-600 rounded-lg hover:bg-slate-50 transition-colors"
-        >
+        <button onClick={()=>{setIsLoaded(false);setAllRows([]);setFileName('');setStatusMsg('');}} className="flex items-center gap-1.5 px-3 py-1.5 text-xs border border-slate-300 text-slate-600 rounded-lg hover:bg-slate-50">
           <Upload className="w-3.5 h-3.5" /> Yeni Dosya
         </button>
       </div>
 
+      {/* STATUS */}
+      {statusMsg && <div className="bg-blue-50 border-b border-blue-200 px-6 py-1.5 text-xs text-blue-700">{statusMsg}</div>}
+
       {/* CONTENT */}
       <div className="flex-1 overflow-auto custom-scroll p-6">
-        {/* ===== CONNECTION VIEW ===== */}
+        {/* ===== CONNECTION ===== */}
         {activeView === 'connection' && (
           <div className="space-y-4">
-            {/* KPI */}
             <div className="grid grid-cols-3 gap-4">
-              <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm">
-                <div className="flex items-center gap-3 mb-2">
-                  <div className="w-10 h-10 rounded-xl bg-cyan-100 flex items-center justify-center"><Link2 className="w-5 h-5 text-cyan-600" /></div>
-                  <span className="text-xs text-slate-500 font-medium">Toplam Bağlantı</span>
-                </div>
-                <div className="text-3xl font-black text-slate-800">{connStats.total}</div>
-              </div>
-              <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm">
-                <div className="flex items-center gap-3 mb-2">
-                  <div className="w-10 h-10 rounded-xl bg-amber-100 flex items-center justify-center"><Clock className="w-5 h-5 text-amber-600" /></div>
-                  <span className="text-xs text-slate-500 font-medium">Sıkı Bağlantı (&lt;30dk)</span>
-                </div>
-                <div className="text-3xl font-black text-amber-600">{connStats.tight}</div>
-              </div>
-              <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm">
-                <div className="flex items-center gap-3 mb-2">
-                  <div className="w-10 h-10 rounded-xl bg-red-100 flex items-center justify-center"><AlertTriangle className="w-5 h-5 text-red-600" /></div>
-                  <span className="text-xs text-slate-500 font-medium">Kaçırılan Bağlantı</span>
-                </div>
-                <div className="text-3xl font-black text-red-600">{connStats.missed}</div>
-              </div>
+              <KPI icon={Link2} color="cyan" label="Toplam Bağlantı" value={connStats.total} />
+              <KPI icon={Clock} color="amber" label="Sıkı (<30dk)" value={connStats.tight} />
+              <KPI icon={AlertTriangle} color="red" label="Kaçırılan" value={connStats.missed} />
             </div>
-
-            {/* Table */}
-            <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-              <div className="overflow-auto custom-scroll max-h-[calc(100vh-340px)]">
-                <table className="excel-table w-full">
-                  <thead className="sticky top-0 z-10">
-                    <tr>
-                      <th className="pg-th-analysis text-center">Bağlantı Noktası</th>
-                      <th className="pg-th-analysis text-center">Uçuş 1</th>
-                      <th className="pg-th-analysis text-center">Uçuş 2</th>
-                      <th className="pg-th-analysis text-center">Planlanan (dk)</th>
-                      <th className="pg-th-analysis text-center">Gerçekleşen (dk)</th>
-                      <th className="pg-th-analysis text-center">Durum</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {connections.length === 0 ? (
-                      <tr><td colSpan={6} className="text-center py-12 text-sm text-slate-400">
-                        <Plane className="w-8 h-8 mx-auto mb-2 text-slate-300" />Bağlantı bulunamadı
-                      </td></tr>
-                    ) : connections.map(c => {
-                      const isMissed = c.actualMin < 0;
-                      const isTight = c.actualMin >= 0 && c.actualMin < 30;
-                      return (
-                        <tr key={c.id} className={isMissed ? 'bg-red-50' : isTight ? 'bg-amber-50' : ''}>
-                          <td className="font-bold text-slate-800 text-xs text-center">{c.airport}</td>
-                          <td className="font-mono text-xs text-center">{c.flight1}</td>
-                          <td className="font-mono text-xs text-center">{c.flight2}</td>
-                          <td className="text-xs text-center font-medium">{c.plannedMin} dk</td>
-                          <td className="text-xs text-center font-bold">{c.actualMin} dk</td>
-                          <td className="text-center">
-                            {isMissed ? (
-                              <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-red-100 text-red-700">KAÇIRILDI</span>
-                            ) : isTight ? (
-                              <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-700">SIKI</span>
-                            ) : (
-                              <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-700">NORMAL</span>
-                            )}
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            </div>
+            {connections.length === 0 ? (
+              <EmptyState icon={Plane} msg="Bağlantı verisi bulunamadı. Excel'de Dep/Arr sütunları olmalı." />
+            ) : (
+              <DataTable headers={['Bağlantı','Uçuş 1','Uçuş 2','Planlanan','Gerçekleşen','Durum']}
+                rows={connections.map(c => {
+                  const missed = c.actual<0, tight = c.actual>=0&&c.actual<30;
+                  return { key:c.id, cls: missed?'bg-red-50':tight?'bg-amber-50':'',
+                    cells: [c.airport, c.f1, c.f2, `${c.plan} dk`, `${c.actual} dk`,
+                      <Badge key="s" type={missed?'red':tight?'amber':'green'} text={missed?'KAÇIRILDI':tight?'SIKI':'NORMAL'} />
+                  ]};
+                })} />
+            )}
           </div>
         )}
 
-        {/* ===== FDP VIEW ===== */}
+        {/* ===== FDP ===== */}
         {activeView === 'fdp' && (
           <div className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
-              <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm">
-                <div className="flex items-center gap-3 mb-2">
-                  <div className="w-10 h-10 rounded-xl bg-emerald-100 flex items-center justify-center"><CheckCircle2 className="w-5 h-5 text-emerald-600" /></div>
-                  <span className="text-xs text-slate-500 font-medium">Toplam Kayıt</span>
-                </div>
-                <div className="text-3xl font-black text-slate-800">{fdpStats.total}</div>
-              </div>
-              <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm">
-                <div className="flex items-center gap-3 mb-2">
-                  <div className="w-10 h-10 rounded-xl bg-red-100 flex items-center justify-center"><ShieldAlert className="w-5 h-5 text-red-600" /></div>
-                  <span className="text-xs text-slate-500 font-medium">Riskli FDP (&lt;60dk kalan)</span>
-                </div>
-                <div className="text-3xl font-black text-red-600">{fdpStats.risk}</div>
-              </div>
+              <KPI icon={CheckCircle2} color="emerald" label="Toplam Kayıt" value={fdpStats.total} />
+              <KPI icon={ShieldAlert} color="red" label="Riskli FDP (<60dk)" value={fdpStats.risk} />
             </div>
+            {fdpRows.length === 0 ? (
+              <EmptyState icon={ShieldAlert} msg="FDP verisi bulunamadı. Excel'de MaxFDP/PlannedFDP sütunları olmalı." />
+            ) : (
+              <DataTable headers={['Uçuş','Max FDP','Planlanan','Kalan','Durum']}
+                rows={fdpRows.map(r => ({
+                  key:r.id, cls:r.risk?'bg-red-50':'',
+                  cells: [r.flight, `${r.max}`, `${r.planned}`, `${r.rem} dk`,
+                    <Badge key="s" type={r.risk?'red':'green'} text={r.risk?'RİSKLİ':'GÜVENLİ'} />
+                ]}))} />
+            )}
+          </div>
+        )}
 
-            <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-              <div className="overflow-auto custom-scroll max-h-[calc(100vh-340px)]">
-                <table className="excel-table w-full">
+        {/* ===== MESAİ ===== */}
+        {activeView === 'mesai' && (
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <KPI icon={Timer} color="cyan" label="Toplam Kayıt" value={mesaiStats.total} />
+              <KPI icon={AlertTriangle} color="red" label="Uzun Mesai (>12s)" value={mesaiStats.long} />
+            </div>
+            {mesaiRows.length === 0 ? (
+              <EmptyState icon={Timer} msg="Mesai verisi bulunamadı. Excel'de DutyTime/Report/Debrief sütunları olmalı." />
+            ) : (
+              <DataTable headers={['Ekip/Personel','Uçuş','Mesai Süresi','Durum']}
+                rows={mesaiRows.map(r => ({
+                  key:r.id, cls:r.isLong?'bg-red-50':'',
+                  cells: [r.crew, r.flight, r.display,
+                    <Badge key="s" type={r.isLong?'red':'green'} text={r.isLong?'UZUN MESAİ':'NORMAL'} />
+                ]}))} />
+            )}
+          </div>
+        )}
+
+        {/* ===== RAW DATA FALLBACK ===== */}
+        {connections.length===0 && fdpRows.length===0 && mesaiRows.length===0 && allRows.length>0 && (
+          <div className="mt-6">
+            <h3 className="text-sm font-bold text-slate-700 mb-3">📊 Ham Veri ({allRows.length} satır)</h3>
+            <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+              <div className="overflow-auto custom-scroll max-h-[calc(100vh-300px)]">
+                <table className="excel-table w-full text-xs">
                   <thead className="sticky top-0 z-10">
-                    <tr>
-                      <th className="pg-th-analysis text-center">Ekip ID / Uçuş</th>
-                      <th className="pg-th-analysis text-center">Max FDP (dk)</th>
-                      <th className="pg-th-analysis text-center">Planlanan FDP (dk)</th>
-                      <th className="pg-th-analysis text-center">Kalan Süre (dk)</th>
-                      <th className="pg-th-analysis text-center">Durum</th>
-                    </tr>
+                    <tr>{headers.map((h,i) => <th key={i} className="pg-th-analysis text-center">{h||`Col ${i+1}`}</th>)}</tr>
                   </thead>
                   <tbody>
-                    {fdpRows.length === 0 ? (
-                      <tr><td colSpan={5} className="text-center py-12 text-sm text-slate-400">
-                        <ShieldAlert className="w-8 h-8 mx-auto mb-2 text-slate-300" />FDP verisi bulunamadı
-                      </td></tr>
-                    ) : fdpRows.map(r => (
-                      <tr key={r.id} className={r.isRisk ? 'bg-red-50' : ''}>
-                        <td className="font-mono text-xs text-center font-bold">{r.flight}</td>
-                        <td className="text-xs text-center">{r.maxFdp}</td>
-                        <td className="text-xs text-center">{r.plannedFdp}</td>
-                        <td className="text-xs text-center font-black">{r.remaining}</td>
-                        <td className="text-center">
-                          {r.isRisk ? (
-                            <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-red-100 text-red-700">RİSKLİ</span>
-                          ) : (
-                            <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-700">GÜVENLİ</span>
-                          )}
-                        </td>
-                      </tr>
+                    {allRows.slice(0,500).map((row,ri) => (
+                      <tr key={ri}>{headers.map((_,ci) => <td key={ci} className="text-xs text-center">{String((row as unknown[])[ci] ?? '')}</td>)}</tr>
                     ))}
                   </tbody>
                 </table>
@@ -452,6 +337,43 @@ export default function CrewConnectionTab() {
             </div>
           </div>
         )}
+      </div>
+    </div>
+  );
+}
+
+/* ── Reusable sub-components ── */
+function KPI({icon:Icon,color,label,value}:{icon:React.ElementType;color:string;label:string;value:number}) {
+  const colors: Record<string,string> = {cyan:'bg-cyan-100 text-cyan-600',amber:'bg-amber-100 text-amber-600',red:'bg-red-100 text-red-600',emerald:'bg-emerald-100 text-emerald-600'};
+  const valColors: Record<string,string> = {cyan:'text-slate-800',amber:'text-amber-600',red:'text-red-600',emerald:'text-slate-800'};
+  return (
+    <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm">
+      <div className="flex items-center gap-3 mb-2">
+        <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${colors[color]||colors.cyan}`}><Icon className="w-5 h-5" /></div>
+        <span className="text-xs text-slate-500 font-medium">{label}</span>
+      </div>
+      <div className={`text-3xl font-black ${valColors[color]||'text-slate-800'}`}>{value}</div>
+    </div>
+  );
+}
+
+function Badge({type,text}:{type:'red'|'amber'|'green';text:string}) {
+  const cls = type==='red'?'bg-red-100 text-red-700':type==='amber'?'bg-amber-100 text-amber-700':'bg-emerald-100 text-emerald-700';
+  return <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${cls}`}>{text}</span>;
+}
+
+function EmptyState({icon:Icon,msg}:{icon:React.ElementType;msg:string}) {
+  return <div className="bg-white rounded-xl border border-slate-200 p-12 text-center"><Icon className="w-8 h-8 mx-auto mb-2 text-slate-300" /><p className="text-sm text-slate-400">{msg}</p></div>;
+}
+
+function DataTable({headers,rows}:{headers:string[];rows:{key:number;cls:string;cells:React.ReactNode[]}[]}) {
+  return (
+    <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+      <div className="overflow-auto custom-scroll max-h-[calc(100vh-340px)]">
+        <table className="excel-table w-full">
+          <thead className="sticky top-0 z-10"><tr>{headers.map(h=><th key={h} className="pg-th-analysis text-center">{h}</th>)}</tr></thead>
+          <tbody>{rows.map(r=><tr key={r.key} className={r.cls}>{r.cells.map((c,i)=><td key={i} className="text-xs text-center font-medium">{c}</td>)}</tr>)}</tbody>
+        </table>
       </div>
     </div>
   );

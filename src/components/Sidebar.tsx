@@ -6,8 +6,8 @@ import { AppType } from '@/app/page';
 interface SidebarProps {
   currentApp: AppType;
   goBackToPortal: () => void;
-  activeTab: 'analysis' | 'comparison' | 'crewDelay' | 'crewConnection';
-  setActiveTab: (tab: 'analysis' | 'comparison' | 'crewDelay' | 'crewConnection') => void;
+  activeTab: 'analysis' | 'comparison' | 'crewDelay';
+  setActiveTab: (tab: 'analysis' | 'comparison' | 'crewDelay') => void;
   openAdminModal: () => void;
 }
 
@@ -93,6 +93,7 @@ export default function Sidebar({ currentApp, goBackToPortal, activeTab, setActi
                {currentApp === 'HOTEL' ? 'Otel Paneli' 
                : currentApp === 'CHECK_IN' ? 'Check-In Paneli' 
                : currentApp === 'DELAY_TRACKING' ? 'Gecikme Takip'
+               : currentApp === 'CREW_CONNECTION' ? 'Bağlantı Takip'
                : 'Ekip Gecikme Takip'}
             </span>
            <span className="text-[10px] text-slate-400">v2.1 Workspace</span>
@@ -121,8 +122,15 @@ export default function Sidebar({ currentApp, goBackToPortal, activeTab, setActi
                     <ArrowLeftRight className="w-5 h-5 text-center" /> 
                     <span>Yıllık Karşılaştırma</span>
                   </div>
+              </div>
+           </>
+        )}
 
-                  <div onClick={() => setActiveTab('crewConnection')} className={getLinkClasses(activeTab === 'crewConnection')}>
+        {currentApp === 'CREW_CONNECTION' && (
+           <>
+              <div className="text-[10px] font-bold text-slate-500 uppercase mb-3 px-6 tracking-wider">Bağlantı Modülü</div>
+              <div className="px-4">
+                  <div className={getLinkClasses(true)}>
                     <Link2 className="w-5 h-5 text-center" /> 
                     <span>Ekip Bağlantı Takip</span>
                   </div>
