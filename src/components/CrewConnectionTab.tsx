@@ -78,12 +78,21 @@ export default function CrewConnectionTab() {
   const connections = useMemo(() => {
     if (colMap.arr === undefined || colMap.dep === undefined) return [];
     const result: {id:number; airport:string; f1:string; f2:string; plan:number; actual:number}[] = [];
+
+    // Strategy 1: Consecutive row matching (same crew roster style data)
     for (let i = 0; i < allRows.length - 1; i++) {
       const arrVal = cellStr(i, 'arr');
       const depVal = cellStr(i+1, 'dep');
       if (arrVal && arrVal === depVal) {
-        const plan = timeToMin(cell(i+1,'std')) - timeToMin(cell(i,'sta'));
-        const actual = timeToMin(cell(i+1,'atd')) - timeToMin(cell(i,'ata'));
+        const staMin = timeToMin(cell(i,'sta'));
+        const stdMin = timeToMin(cell(i+1,'std'));
+        const ataMin = timeToMin(cell(i,'ata'));
+        const atdMin = timeToMin(cell(i+1,'atd'));
+        let plan = stdMin - staMin;
+        let actual = atdMin - ataMin;
+        // Handle midnight crossing
+        if (!isNaN(plan) && plan < -720) plan += 1440;
+        if (!isNaN(actual) && actual < -720) actual += 1440;
         result.push({
           id: i, airport: arrVal,
           f1: cellStr(i,'flight') || '-', f2: cellStr(i+1,'flight') || '-',
@@ -91,6 +100,60 @@ export default function CrewConnectionTab() {
         });
       }
     }
+
+    // Strategy 2: If no consecutive matches found, try airport-based time-proximity matching
+    if (result.length === 0) {
+      // Build index: departures grouped by airport
+      const depsByAirport: Record<string, {idx:number; stdMin:number; atdMin:number}[]> = {};
+      for (let i = 0; i < allRows.length; i++) {
+        const dep = cellStr(i, 'dep');
+        if (!dep) continue;
+        const stdMin = timeToMin(cell(i,'std'));
+        const atdMin = timeToMin(cell(i,'atd'));
+        if (!depsByAirport[dep]) depsByAirport[dep] = [];
+        depsByAirport[dep].push({ idx: i, stdMin, atdMin });
+      }
+
+      const usedDeps = new Set<number>();
+
+      for (let i = 0; i < allRows.length; i++) {
+        const arrPort = cellStr(i, 'arr');
+        if (!arrPort || !depsByAirport[arrPort]) continue;
+        const staMin = timeToMin(cell(i, 'sta'));
+        const ataMin = timeToMin(cell(i, 'ata'));
+        if (isNaN(staMin)) continue;
+
+        // Find the next departure from this airport after this arrival
+        let bestDep: typeof depsByAirport[string][0] | null = null;
+        let bestGap = Infinity;
+
+        for (const dep of depsByAirport[arrPort]) {
+          if (dep.idx === i || usedDeps.has(dep.idx)) continue;
+          let gap = dep.stdMin - staMin;
+          if (isNaN(gap)) continue;
+          if (gap < -720) gap += 1440; // midnight crossing
+          if (gap >= 0 && gap < 360 && gap < bestGap) { // within 6 hours, closest
+            bestGap = gap;
+            bestDep = dep;
+          }
+        }
+
+        if (bestDep) {
+          usedDeps.add(bestDep.idx);
+          let plan = bestDep.stdMin - staMin;
+          let actual = bestDep.atdMin - ataMin;
+          if (!isNaN(plan) && plan < -720) plan += 1440;
+          if (!isNaN(actual) && actual < -720) actual += 1440;
+
+          result.push({
+            id: i, airport: arrPort,
+            f1: cellStr(i,'flight') || '-', f2: cellStr(bestDep.idx,'flight') || '-',
+            plan: isNaN(plan)?0:plan, actual: isNaN(actual)?0:actual,
+          });
+        }
+      }
+    }
+
     return result;
   }, [allRows, colMap]);
 

@@ -74,9 +74,7 @@ export default function CrewDelayTab() {
   // ========== COMPUTED DATA ==========
   const fmtMins = (mins: number): string => {
     if (!mins && mins !== 0) return '-';
-    const h = Math.floor(mins / 60);
-    const m = mins % 60;
-    return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`;
+    return `${mins}`;
   };
 
   const crewDelayFlights = useMemo(() => {
