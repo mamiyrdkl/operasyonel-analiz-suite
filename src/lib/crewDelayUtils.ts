@@ -112,6 +112,57 @@ export function isCrewDelayCode(code: string): boolean {
 }
 
 /**
+ * Gecikme değerini dakikaya çevir
+ * Excel'den gelen farklı formatları handle eder:
+ * - HMM/HHMM format: 327 → 3h 27m → 207 dakika
+ * - Excel time serial: 0.14375 → 3:27 → 207 dakika  
+ * - String "3:27" → 207 dakika
+ * - Düz dakika (< 100): 45 → 45 dakika
+ */
+export function parseDelayValue(raw: string | number): number {
+  if (raw === null || raw === undefined || raw === '') return 0;
+  
+  const val = typeof raw === 'number' ? raw : raw;
+  const numVal = Number(val);
+
+  // Excel time serial (0 < val < 1) → gün kesri, dakikaya çevir
+  if (!isNaN(numVal) && numVal > 0 && numVal < 1) {
+    return Math.round(numVal * 1440); // 1440 = 24*60
+  }
+
+  // String with colon "3:27" or "03:27" → hours:minutes
+  const str = String(val).trim();
+  const colonMatch = str.match(/^(\d{1,2}):(\d{2})$/);
+  if (colonMatch) {
+    const h = parseInt(colonMatch[1], 10);
+    const m = parseInt(colonMatch[2], 10);
+    return h * 60 + m;
+  }
+
+  // Pure number
+  if (!isNaN(numVal)) {
+    const intVal = Math.round(numVal);
+    
+    // < 100: treat as plain minutes (15, 30, 45, 60, 90 etc.)
+    if (intVal < 100) return intVal;
+    
+    // >= 100: HMM/HHMM format check
+    // 327 → hours=3, mins=27 → valid (27 < 60) → 207 minutes
+    // 199 → hours=1, mins=99 → invalid (99 >= 60) → treat as plain minutes
+    const mins = intVal % 100;
+    const hours = Math.floor(intVal / 100);
+    if (mins < 60 && hours < 24) {
+      return hours * 60 + mins;
+    }
+    
+    // Otherwise treat as plain minutes
+    return intVal;
+  }
+
+  return parseInt(str, 10) || 0;
+}
+
+/**
  * Gecikme dakikası hesapla (STD ve ATD arasındaki fark)
  */
 export function calculateDelayMinutes(std: string, atd: string): number {
@@ -213,7 +264,7 @@ export const COLUMN_MAPPINGS: Record<string, string[]> = {
   arrivalAirport: ['arr', 'arrival', 'to', 'varış', 'varis', 'arr airport', 'destination', 'ades'],
   std: ['std', 'scheduled', 'scheduled departure', 'planlanan', 'sobt'],
   atd: ['atd', 'actual', 'actual departure', 'gerçekleşen', 'aobt', 'actual off block'],
-  delayMinutes: ['delay', 'delay min', 'delay minutes', 'gecikme', 'gecikme dk', 'gecikme dakika', 'delay time', 'del min'],
+  delayMinutes: ['delay', 'delay min', 'delay minutes', 'gecikme', 'gecikme dk', 'gecikme dakika', 'delay time', 'del min', 'dakika', 'dk', 'duration', 'süre', 'sure'],
   delayCode: ['code', 'delay code', 'gecikme kodu', 'kod', 'iata code', 'delay reason code'],
   delaySubcode: ['subcode', 'sub code', 'sub', 'alt kod', 'delay sub code'],
   delayDescription: ['description', 'reason', 'açıklama', 'aciklama', 'gecikme açıklama', 'delay reason', 'delay desc'],

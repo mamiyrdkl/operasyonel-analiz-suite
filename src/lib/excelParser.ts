@@ -89,13 +89,13 @@ export function extractDelayColumns(headerRow: any[]) {
                 if (hIdx === idx) return false; 
                 const h = cleanStr(hc);
                 const hSuffix = h.replace(/[^0-9]/g, '');
-                const isTime = h.includes("TIME") || h.includes("TİME") || h.includes("SURE") || h.includes("SÜRE") || h.includes("DURATION");
+                const isTime = h.includes("TIME") || h.includes("TİME") || h.includes("SURE") || h.includes("SÜRE") || h.includes("DURATION") || h.includes("DAKIKA") || h.includes("DAKİKA") || h === "DK";
                 return isTime && (suffix === "" || hSuffix === suffix); 
             });
 
             if (tCol === -1) {
                 const nextHeader = cleanStr(headerRow[idx + 1]);
-                if (nextHeader && (nextHeader.includes("TIME") || nextHeader.includes("TİME") || nextHeader.includes("SURE") || nextHeader.includes("SÜRE") || nextHeader.includes("DK"))) {
+                if (nextHeader && (nextHeader.includes("TIME") || nextHeader.includes("TİME") || nextHeader.includes("SURE") || nextHeader.includes("SÜRE") || nextHeader.includes("DK") || nextHeader.includes("DAKIKA") || nextHeader.includes("DAKİKA"))) {
                     tCol = idx + 1;
                 }
             }
@@ -119,4 +119,44 @@ export function extractDelayColumns(headerRow: any[]) {
     }
     
     return delayCols;
+}
+
+/**
+ * Gecikme süresini dakikaya çevir
+ * HMM/HHMM format: 327 → 3h 27m → 207 dakika
+ * Excel time serial: 0.14375 → 207 dakika
+ * String "3:27" → 207 dakika
+ * Düz dakika (< 100): 45 → 45 dakika
+ */
+export function parseDelayTime(raw: any): number {
+    if (raw === null || raw === undefined || raw === '') return 0;
+    const numVal = Number(raw);
+    
+    // Excel time serial (0 < val < 1)
+    if (!isNaN(numVal) && numVal > 0 && numVal < 1) {
+        return Math.round(numVal * 1440);
+    }
+    
+    // String with colon "3:27"
+    const str = String(raw).trim();
+    const colonMatch = str.match(/^(\d{1,2}):(\d{2})$/);
+    if (colonMatch) {
+        return parseInt(colonMatch[1], 10) * 60 + parseInt(colonMatch[2], 10);
+    }
+    
+    // Pure number
+    if (!isNaN(numVal)) {
+        const intVal = Math.round(numVal);
+        if (intVal < 100) return intVal;
+        
+        // HMM/HHMM format: 327 → 3*60+27 = 207
+        const mins = intVal % 100;
+        const hours = Math.floor(intVal / 100);
+        if (mins < 60 && hours < 24) {
+            return hours * 60 + mins;
+        }
+        return intVal;
+    }
+    
+    return parseInt(str, 10) || 0;
 }

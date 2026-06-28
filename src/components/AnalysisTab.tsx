@@ -2,7 +2,7 @@
 import { useState, useMemo } from 'react';
 import { RefreshCw, FolderOpen, Wand2, FileSpreadsheet, X, CodeSquare } from 'lucide-react';
 import * as XLSX from 'xlsx';
-import { HEADER_ALIASES, findColumnIndex, parseFlightDate, cleanStr, extractDelayColumns } from '@/lib/excelParser';
+import { HEADER_ALIASES, findColumnIndex, parseFlightDate, cleanStr, extractDelayColumns, parseDelayTime } from '@/lib/excelParser';
 import { exportToExcelWithLogo } from '@/lib/excelExport';
 import { Chart as ChartJS, ArcElement, Tooltip, Legend, CategoryScale, LinearScale, BarElement, Title } from 'chart.js';
 import { Pie, Bar } from 'react-chartjs-2';
@@ -122,7 +122,7 @@ export default function AnalysisTab() {
 
                 delayCols.forEach((g: any) => {
                     const code = cleanStr(row[g.codeIdx]);
-                    const time = parseInt(row[g.timeIdx] || "0");
+                    const time = parseDelayTime(row[g.timeIdx]);
                     const matchedCode = delayCodes.find(c => c.code === code);
                     
                     if (matchedCode && time >= 15) {
@@ -303,7 +303,7 @@ export default function AnalysisTab() {
             <div className="col-span-2 flex flex-col gap-3">
                 <div className="bg-white p-2 rounded-xl border border-slate-200 shadow-sm flex-1 flex flex-col justify-center items-center text-center">
                     <span className="text-[10px] font-bold text-slate-400 tracking-widest">TOTAL FLIGHTS</span>
-                    <span className="text-3xl font-black text-slate-800 mt-1">{new Set(processedData.map(d => d.flight)).size}</span>
+                    <span className="text-3xl font-black text-slate-800 mt-1">{processedData.length}</span>
                     <span className="text-[9px] text-blue-600 mt-1 font-bold bg-blue-50 px-2 py-0.5 rounded-full border border-blue-100">{'Gecikmeli (>15dk)'}</span>
                 </div>
                 <div className="bg-white p-2 rounded-xl border border-slate-200 shadow-sm flex-1 flex flex-col justify-center items-center text-center">

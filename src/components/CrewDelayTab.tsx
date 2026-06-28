@@ -8,6 +8,7 @@ import {
   getShift,
   isCrewDelayCode,
   calculateDelayMinutes,
+  parseDelayValue,
   calculateOverallStats,
   calculateShiftSummaries,
   matchColumn,
@@ -225,7 +226,7 @@ export default function CrewDelayTab() {
       let delayMin = 0;
       const rawDelay = getFieldValue(row, 'delayMinutes');
       if (rawDelay) {
-        delayMin = parseInt(rawDelay, 10) || 0;
+        delayMin = parseDelayValue(rawDelay);
       } else if (std && atd) {
         delayMin = calculateDelayMinutes(std, atd);
       }

@@ -2,7 +2,7 @@
 import { useState } from 'react';
 import { ArrowLeftRight, UploadCloud, Play, FileSpreadsheet, Check } from 'lucide-react';
 import * as XLSX from 'xlsx';
-import { HEADER_ALIASES, findColumnIndex, parseFlightDate, cleanStr, extractDelayColumns } from '@/lib/excelParser';
+import { HEADER_ALIASES, findColumnIndex, parseFlightDate, cleanStr, extractDelayColumns, parseDelayTime } from '@/lib/excelParser';
 import { useSettings } from '@/lib/useSettings';
 import { Chart as ChartJS, CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend, BarElement } from 'chart.js';
 import { Line, Bar } from 'react-chartjs-2';
@@ -110,7 +110,7 @@ export default function ComparisonTab() {
 
                     delayCols.forEach((g: any) => {
                         const code = cleanStr(row[g.codeIdx]);
-                        const time = parseInt(row[g.timeIdx] || "0");
+                        const time = parseDelayTime(row[g.timeIdx]);
                         flightTotalDelayMins += time;
                         
                         const isCrewCode = delayCodes.find(c => c.code === code);
@@ -213,9 +213,7 @@ export default function ComparisonTab() {
 
   const fmtMins = (mins: number): string => {
     if (!mins) return '-';
-    const h = Math.floor(mins / 60);
-    const m = mins % 60;
-    return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`;
+    return `${mins}`;
   };
 
   return (
