@@ -5,6 +5,7 @@ import Sidebar from '@/components/Sidebar';
 import AnalysisTab from '@/components/AnalysisTab';
 import ComparisonTab from '@/components/ComparisonTab';
 import CrewDelayTab from '@/components/CrewDelayTab';
+import YearlyAnalysisTab from '@/components/YearlyAnalysisTab';
 import HotelReservationTab from '@/components/HotelReservationTab';
 import CheckInReportTab from '@/components/CheckInReportTab';
 import DelayTrackingTab from '@/components/DelayTrackingTab';
@@ -16,7 +17,7 @@ export type AppType = 'PORTAL' | 'ANALYSIS_SUITE' | 'HOTEL' | 'CHECK_IN' | 'DELA
 
 export default function DashboardPage() {
   const [currentApp, setCurrentApp] = useState<AppType>('PORTAL');
-  const [activeTab, setActiveTab] = useState<'analysis' | 'comparison' | 'crewDelay'>('analysis');
+  const [activeTab, setActiveTab] = useState<'analysis' | 'comparison' | 'crewDelay' | 'yearlyAnalysis'>('analysis');
   const [isAdminModalOpen, setIsAdminModalOpen] = useState(false);
 
   if (currentApp === 'PORTAL') {
@@ -57,6 +58,7 @@ export default function DashboardPage() {
              {activeTab === 'analysis' && <AnalysisTab />}
              {activeTab === 'comparison' && <ComparisonTab />}
              {activeTab === 'crewDelay' && <CrewDelayTab />}
+             {activeTab === 'yearlyAnalysis' && <YearlyAnalysisTab />}
            </>
         )}
 

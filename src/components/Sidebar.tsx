@@ -1,13 +1,13 @@
 'use client';
 
-import { PieChart, ArrowLeftRight, Settings, CalendarDays, Clock, Building2, LogOut, PlaneTakeoff, ClipboardList, Link2 } from 'lucide-react';
+import { PieChart, ArrowLeftRight, Settings, CalendarDays, Clock, Building2, LogOut, PlaneTakeoff, ClipboardList, Link2, BarChart3 } from 'lucide-react';
 import { AppType } from '@/app/page';
 
 interface SidebarProps {
   currentApp: AppType;
   goBackToPortal: () => void;
-  activeTab: 'analysis' | 'comparison' | 'crewDelay';
-  setActiveTab: (tab: 'analysis' | 'comparison' | 'crewDelay') => void;
+  activeTab: 'analysis' | 'comparison' | 'crewDelay' | 'yearlyAnalysis';
+  setActiveTab: (tab: 'analysis' | 'comparison' | 'crewDelay' | 'yearlyAnalysis') => void;
   openAdminModal: () => void;
 }
 
@@ -121,6 +121,11 @@ export default function Sidebar({ currentApp, goBackToPortal, activeTab, setActi
                   <div onClick={() => setActiveTab('comparison')} className={getLinkClasses(activeTab === 'comparison')}>
                     <ArrowLeftRight className="w-5 h-5 text-center" /> 
                     <span>Yıllık Karşılaştırma</span>
+                  </div>
+
+                  <div onClick={() => setActiveTab('yearlyAnalysis')} className={getLinkClasses(activeTab === 'yearlyAnalysis')}>
+                    <BarChart3 className="w-5 h-5 text-center" /> 
+                    <span>Yıllık Kırılım Analizi</span>
                   </div>
               </div>
            </>
