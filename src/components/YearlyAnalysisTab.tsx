@@ -1,5 +1,5 @@
 'use client';
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef } from 'react';
 import { BarChart3, FolderOpen, RefreshCw, FileSpreadsheet, CalendarDays, Users, AlertTriangle, Clock, ChevronDown, ChevronUp, Upload } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { HEADER_ALIASES, findColumnIndex, parseFlightDate, cleanStr, extractDelayColumns, parseDelayTime } from '@/lib/excelParser';
@@ -30,6 +30,7 @@ export default function YearlyAnalysisTab() {
   const [files, setFiles] = useState<File[]>([]);
   const [scheduleFile, setScheduleFile] = useState<File | null>(null);
   const [chiefSchedule, setChiefSchedule] = useState<ChiefScheduleEntry[]>([]);
+  const chiefScheduleRef = useRef<ChiefScheduleEntry[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
   const [data, setData] = useState<YearlyRecord[]>([]);
   const [activeView, setActiveView] = useState<'monthly' | 'shift' | 'code' | 'chief'>('monthly');
@@ -221,6 +222,7 @@ export default function YearlyAnalysisTab() {
           }
         });
 
+        chiefScheduleRef.current = allEntries;
         setChiefSchedule(allEntries);
         console.log(`[Schedule] TOPLAM: ${allEntries.length} kayıt`);
         
@@ -296,7 +298,13 @@ export default function YearlyAnalysisTab() {
 
   // ===================== FIND CHIEF FROM SCHEDULE =====================
   const findChief = (dateIso: string, shift: string): string => {
-    const match = chiefSchedule.find(e => e.date === dateIso && e.shift === shift);
+    const schedule = chiefScheduleRef.current;
+    if (schedule.length === 0) return '';
+    const match = schedule.find(e => e.date === dateIso && e.shift === shift);
+    if (!match) {
+      // Debug: ilk 3 eşleşemeyen kayıt için log
+      console.log(`[FindChief] Eşleşmedi: date=${dateIso}, shift=${shift}, schedule dates sample:`, schedule.slice(0, 3).map(e => `${e.date}/${e.shift}/${e.chief}`));
+    }
     return match ? match.chief : '';
   };
 
