@@ -297,15 +297,34 @@ export default function YearlyAnalysisTab() {
   };
 
   // ===================== FIND CHIEF FROM SCHEDULE =====================
+  const findChiefDebugCount = useRef(0);
   const findChief = (dateIso: string, shift: string): string => {
     const schedule = chiefScheduleRef.current;
     if (schedule.length === 0) return '';
-    const match = schedule.find(e => e.date === dateIso && e.shift === shift);
-    if (!match) {
-      // Debug: ilk 3 eşleşemeyen kayıt için log
-      console.log(`[FindChief] Eşleşmedi: date=${dateIso}, shift=${shift}, schedule dates sample:`, schedule.slice(0, 3).map(e => `${e.date}/${e.shift}/${e.chief}`));
+    
+    // 1. Tam eşleşme: tarih + vardiya
+    const exactMatch = schedule.find(e => e.date === dateIso && e.shift === shift);
+    if (exactMatch) return exactMatch.chief;
+    
+    // 2. Gün + vardiya eşleşmesi (ay/yıl farklı olsa bile)
+    const day = dateIso.split('-')[2]; // "25" from "2025-05-25"
+    const dayShiftMatch = schedule.find(e => e.date.endsWith('-' + day) && e.shift === shift);
+    if (dayShiftMatch) return dayShiftMatch.chief;
+    
+    // 3. Sadece gün eşleşmesi (vardiya da farklıysa)
+    const dayOnlyMatch = schedule.find(e => e.date.endsWith('-' + day) && e.shift !== 'OFF');
+    if (dayOnlyMatch) {
+      // Aynı güne birden fazla vardiya olabilir, ilkini döndür
+      return dayOnlyMatch.chief;
     }
-    return match ? match.chief : '';
+
+    // Debug log (ilk 5 eşleşmeyen)
+    if (findChiefDebugCount.current < 5) {
+      findChiefDebugCount.current++;
+      console.log(`[FindChief] Eşleşmedi: flight_date=${dateIso}, flight_shift=${shift}`);
+      console.log(`[FindChief] Schedule sample:`, schedule.slice(0, 5).map(e => `${e.date} | ${e.shift} | ${e.chief}`));
+    }
+    return '';
   };
 
   // ===================== PROCESS ALL FILES =====================
