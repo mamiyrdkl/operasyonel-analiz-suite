@@ -1,6 +1,6 @@
 'use client';
 import { useState, useMemo, useRef } from 'react';
-import { BarChart3, FolderOpen, RefreshCw, FileSpreadsheet, CalendarDays, Users, AlertTriangle, Clock, ChevronDown, ChevronUp, Upload } from 'lucide-react';
+import { BarChart3, FolderOpen, RefreshCw, FileSpreadsheet, CalendarDays, Users, AlertTriangle, Clock, ChevronDown, ChevronUp, Upload, Trash2, X } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { HEADER_ALIASES, findColumnIndex, parseFlightDate, cleanStr, extractDelayColumns, parseDelayTime } from '@/lib/excelParser';
 import { useSettings } from '@/lib/useSettings';
@@ -27,7 +27,7 @@ type ChiefScheduleEntry = { date: string; shift: string; chief: string };
 // ===================== COMPONENT =====================
 export default function YearlyAnalysisTab() {
   const { delayCodes, chiefs } = useSettings();
-  const [files, setFiles] = useState<File[]>([]);
+  const [monthlyFiles, setMonthlyFiles] = useState<Record<number, File[]>>({});
   const [scheduleFile, setScheduleFile] = useState<File | null>(null);
   const [chiefSchedule, setChiefSchedule] = useState<ChiefScheduleEntry[]>([]);
   const chiefScheduleRef = useRef<ChiefScheduleEntry[]>([]);
@@ -35,11 +35,33 @@ export default function YearlyAnalysisTab() {
   const [data, setData] = useState<YearlyRecord[]>([]);
   const [activeView, setActiveView] = useState<'monthly' | 'shift' | 'code' | 'chief'>('monthly');
   const [expandedMonth, setExpandedMonth] = useState<number | null>(null);
+  const [showUploadPanel, setShowUploadPanel] = useState(true);
+
+  const totalFileCount = Object.values(monthlyFiles).reduce((s, arr) => s + arr.length, 0);
 
   // ===================== FILE HANDLERS =====================
-  const handleFilesUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleMonthFileUpload = (monthIdx: number, e: React.ChangeEvent<HTMLInputElement>) => {
     const selected = Array.from(e.target.files || []);
-    if (selected.length > 0) setFiles(prev => [...prev, ...selected]);
+    if (selected.length > 0) {
+      setMonthlyFiles(prev => ({
+        ...prev,
+        [monthIdx]: [...(prev[monthIdx] || []), ...selected]
+      }));
+    }
+    e.target.value = ''; // Reset input
+  };
+
+  const removeMonthFile = (monthIdx: number, fileIdx: number) => {
+    setMonthlyFiles(prev => {
+      const updated = [...(prev[monthIdx] || [])];
+      updated.splice(fileIdx, 1);
+      return { ...prev, [monthIdx]: updated };
+    });
+  };
+
+  const clearAllFiles = () => {
+    setMonthlyFiles({});
+    setData([]);
   };
 
   const handleScheduleUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -329,14 +351,16 @@ export default function YearlyAnalysisTab() {
 
   // ===================== PROCESS ALL FILES =====================
   const processAllFiles = async () => {
-    if (files.length === 0 || delayCodes.length === 0) {
+    const allFiles = Object.values(monthlyFiles).flat();
+    if (allFiles.length === 0 || delayCodes.length === 0) {
       alert(delayCodes.length === 0 ? 'Lütfen Ayarlar\'dan gecikme kodlarını tanımlayın!' : 'Lütfen en az 1 dosya yükleyin!');
       return;
     }
     setIsProcessing(true);
+    findChiefDebugCount.current = 0;
     const allRecords: YearlyRecord[] = [];
 
-    for (const file of files) {
+    for (const file of allFiles) {
       const records = await parseOneFile(file);
       allRecords.push(...records);
     }
@@ -641,32 +665,31 @@ export default function YearlyAnalysisTab() {
         <h2 className="text-lg font-bold text-slate-800 flex items-center gap-3">
           <div className="w-8 h-8 rounded-lg bg-orange-100 flex items-center justify-center text-orange-600"><BarChart3 className="w-5 h-5" /></div>
           Yıllık Kırılım Analizi
+          {totalFileCount > 0 && <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full font-bold">{totalFileCount} dosya</span>}
         </h2>
         <div className="flex items-center gap-2">
-          {/* Schedule Upload */}
           <input type="file" id="scheduleInput" accept=".xls,.xlsx,.csv" className="hidden" onChange={handleScheduleUpload} />
           <label htmlFor="scheduleInput" className={`px-3 py-2 rounded-lg text-xs font-bold cursor-pointer transition flex items-center gap-1.5 border shadow-sm ${scheduleFile ? 'bg-green-50 text-green-700 border-green-300' : 'bg-purple-50 text-purple-700 border-purple-200 hover:bg-purple-100'}`}>
             <Users className="w-3.5 h-3.5" /> {scheduleFile ? `✓ ${scheduleFile.name}` : 'Çalışma Programı'}
           </label>
-
           <div className="h-6 w-px bg-slate-200" />
-
-          {/* File upload */}
-          <input type="file" id="yearlyFileInput" accept=".xls,.xlsx,.csv" className="hidden" multiple onChange={handleFilesUpload} />
-          <label htmlFor="yearlyFileInput" className="bg-white border text-slate-600 hover:bg-slate-50 px-3 py-2 rounded-lg text-xs font-bold cursor-pointer transition shadow-sm flex items-center gap-1.5">
+          <button onClick={() => setShowUploadPanel(!showUploadPanel)} className="bg-white border text-slate-600 hover:bg-slate-50 px-3 py-2 rounded-lg text-xs font-bold cursor-pointer transition shadow-sm flex items-center gap-1.5">
             <FolderOpen className="w-3.5 h-3.5 text-slate-500" />
-            {files.length > 0 ? `${files.length} dosya seçili` : 'Excel Dosyaları'}
-          </label>
-
-          <button disabled={files.length === 0 || isProcessing} onClick={processAllFiles}
+            {showUploadPanel ? 'Panelı Gizle' : 'Dosya Yükle'}
+          </button>
+          <button disabled={totalFileCount === 0 || isProcessing} onClick={processAllFiles}
             className="bg-slate-900 hover:bg-slate-800 text-white px-4 py-2 rounded-lg text-xs font-bold shadow-md transition disabled:opacity-50 flex items-center gap-1.5">
             <RefreshCw className={`w-3.5 h-3.5 ${isProcessing ? 'animate-spin' : ''}`} /> İŞLE
           </button>
-
           <button disabled={!hasData} onClick={exportYearlyExcel}
             className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-xs font-bold shadow-md transition disabled:opacity-50 flex items-center gap-1.5">
             <FileSpreadsheet className="w-3.5 h-3.5" /> EXCEL
           </button>
+          {totalFileCount > 0 && (
+            <button onClick={clearAllFiles} className="text-red-400 hover:text-red-600 p-2 transition" title="Tümünü Temizle">
+              <Trash2 className="w-4 h-4" />
+            </button>
+          )}
         </div>
       </header>
 
@@ -675,6 +698,49 @@ export default function YearlyAnalysisTab() {
         {isProcessing && (
           <div className="absolute inset-0 bg-white/80 backdrop-blur-sm z-50 flex items-center justify-center">
             <div className="flex flex-col items-center"><RefreshCw className="w-12 h-12 text-blue-600 animate-spin mb-4" /><span className="font-bold text-slate-800 tracking-wider">VERİLER İŞLENİYOR...</span></div>
+          </div>
+        )}
+
+        {/* MONTHLY FILE UPLOAD GRID */}
+        {showUploadPanel && (
+          <div className="bg-white rounded-xl border-2 border-dashed border-slate-300 p-4 shrink-0 animate-in fade-in duration-300">
+            <div className="flex justify-between items-center mb-3">
+              <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Aylık Dosya Yükleme (Her ay için ayrı Excel yükleyebilirsiniz)</span>
+              <span className="text-[10px] text-slate-400">{totalFileCount} / 12 ay</span>
+            </div>
+            <div className="grid grid-cols-6 gap-2">
+              {MONTH_NAMES.map((mName, mIdx) => {
+                const mFiles = monthlyFiles[mIdx] || [];
+                const hasFiles = mFiles.length > 0;
+                return (
+                  <div key={mIdx} className={`relative rounded-lg border-2 p-2 transition-all ${hasFiles ? 'border-green-400 bg-green-50' : 'border-slate-200 bg-slate-50 hover:border-blue-300 hover:bg-blue-50/30'}`}>
+                    <div className="flex justify-between items-center mb-1">
+                      <span className={`text-[10px] font-black ${hasFiles ? 'text-green-700' : 'text-slate-500'}`}>{mName}</span>
+                      {hasFiles && <span className="text-[9px] bg-green-200 text-green-800 px-1 rounded font-bold">{mFiles.length}</span>}
+                    </div>
+                    {hasFiles ? (
+                      <div className="space-y-0.5">
+                        {mFiles.map((f, fi) => (
+                          <div key={fi} className="flex items-center gap-1 text-[9px] text-green-700 bg-green-100 rounded px-1 py-0.5">
+                            <span className="truncate flex-1" title={f.name}>{f.name.length > 12 ? f.name.slice(0, 12) + '...' : f.name}</span>
+                            <button onClick={() => removeMonthFile(mIdx, fi)} className="text-red-400 hover:text-red-600 shrink-0"><X className="w-3 h-3" /></button>
+                          </div>
+                        ))}
+                        <label className="block text-center text-[9px] text-green-600 hover:text-green-800 cursor-pointer font-bold mt-0.5">+ Ekle
+                          <input type="file" accept=".xls,.xlsx,.csv" className="hidden" multiple onChange={(e) => handleMonthFileUpload(mIdx, e)} />
+                        </label>
+                      </div>
+                    ) : (
+                      <label className="flex flex-col items-center justify-center h-10 cursor-pointer group">
+                        <Upload className="w-4 h-4 text-slate-300 group-hover:text-blue-500 transition" />
+                        <span className="text-[9px] text-slate-400 group-hover:text-blue-600 font-medium mt-0.5">Seçin</span>
+                        <input type="file" accept=".xls,.xlsx,.csv" className="hidden" multiple onChange={(e) => handleMonthFileUpload(mIdx, e)} />
+                      </label>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
           </div>
         )}
 
