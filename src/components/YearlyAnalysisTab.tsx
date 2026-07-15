@@ -83,153 +83,179 @@ export default function YearlyAnalysisTab() {
         const wb = XLSX.read(new Uint8Array(e.target?.result as ArrayBuffer), { type: 'array' });
         const allEntries: ChiefScheduleEntry[] = [];
         
-        // Ayarlar'daki şef isimleri (büyük harf, normalize)
         const settingsChiefNames = chiefs.map(c => cleanStr(c));
-        console.log('[Schedule] Ayarlardaki şefler:', settingsChiefNames);
-        console.log('[Schedule] Sayfa sayısı:', wb.SheetNames.length, 'Sayfalar:', wb.SheetNames);
+        console.log('[Schedule] === BAŞLADI ===');
+        console.log('[Schedule] Ayarlardaki şefler:', chiefs);
+        console.log('[Schedule] Normalize:', settingsChiefNames);
+        console.log('[Schedule] Sayfa sayısı:', wb.SheetNames.length, '→', wb.SheetNames.join(', '));
 
-        // Her sayfayı (her ay) ayrı ayrı işle
         wb.SheetNames.forEach((sheetName, sheetIdx) => {
           const rawData: any[][] = XLSX.utils.sheet_to_json(wb.Sheets[sheetName], { header: 1, defval: '' });
           if (!rawData || rawData.length === 0) return;
+          console.log(`\n[Schedule] ====== SAYFA: "${sheetName}" (${rawData.length} satır) ======`);
 
-          // 1) Ay ve yılı tespit et
+          // 1) Ay/yıl tespiti
           let monthYear = detectMonthYear(sheetName, file.name, rawData);
-          
-          // Fallback: Sayfa sırası ay olarak kullan (0=Ocak, ...)
           if (!monthYear) {
             const currentYear = new Date().getFullYear();
-            // Tek sayfalıysa dosya adından ay çıkarmayı dene, yoksa mevcut ayı kullan
-            if (wb.SheetNames.length === 1) {
-              monthYear = { month: new Date().getMonth(), year: currentYear };
-            } else {
-              monthYear = { month: sheetIdx % 12, year: currentYear };
-            }
-            console.log('[Schedule] Ay tespiti yapılamadı, fallback kullanıldı:', MONTH_NAMES[monthYear.month], monthYear.year);
+            monthYear = wb.SheetNames.length === 1
+              ? { month: new Date().getMonth(), year: currentYear }
+              : { month: sheetIdx % 12, year: currentYear };
+            console.log('[Schedule] Ay fallback:', MONTH_NAMES[monthYear.month], monthYear.year);
           }
-          
           const { month, year } = monthYear;
-          console.log(`[Schedule] Sayfa "${sheetName}" → ${MONTH_NAMES[month]} ${year}`);
+          console.log(`[Schedule] Ay: ${MONTH_NAMES[month]} ${year}`);
 
-          // 2) Gün sütunlarını bul (1, 2, 3, ... 31 olan başlık satırı)
+          // 2) Gün sütunlarını bul — TÜM satırları tara (ilk 100)
           let dayHeaderRowIdx = -1;
           let dayColMap: Record<number, number> = {};
+          let bestDayCount = 0;
 
-          for (let r = 0; r < Math.min(30, rawData.length); r++) {
+          for (let r = 0; r < Math.min(100, rawData.length); r++) {
             const row = rawData[r];
             if (!row) continue;
             const numericCols: Record<number, number> = {};
             let numCount = 0;
             
             for (let c = 0; c < row.length; c++) {
-              const val = Number(row[c]);
+              const raw = row[c];
+              const val = typeof raw === 'number' ? raw : parseInt(String(raw).trim());
               if (!isNaN(val) && val >= 1 && val <= 31 && Number.isInteger(val)) {
-                // Ardışık gün numaraları olmalı (1,2,3... sırasında)
                 numericCols[val] = c;
                 numCount++;
               }
             }
-            // 5+ gün numarası yeterli (kısa aylar veya kısmi programlar)
-            if (numCount >= 5) {
+            // En iyi satırı seç (en fazla gün bulunan)
+            if (numCount >= 5 && numCount > bestDayCount) {
+              bestDayCount = numCount;
               dayHeaderRowIdx = r;
               dayColMap = numericCols;
-              break;
             }
           }
 
-          console.log(`[Schedule] Gün başlık satırı: ${dayHeaderRowIdx}, Gün sayısı: ${Object.keys(dayColMap).length}`);
-          if (dayHeaderRowIdx === -1) return;
+          console.log(`[Schedule] Gün başlık satırı: ${dayHeaderRowIdx}, Gün sütun sayısı: ${Object.keys(dayColMap).length}`);
+          if (dayHeaderRowIdx === -1) {
+            console.log('[Schedule] UYARI: Gün sütunları bulunamadı, sayfa atlanıyor');
+            return;
+          }
 
-          // 3) "Vardiya Sorumlusu" yazan VEYA ayarlardaki şef isimlerinden birini içeren satırları bul
+          // İlk birkaç satırı dump et (debug)
+          console.log('[Schedule] İlk veri satırı (r+1):', rawData[dayHeaderRowIdx + 1]?.slice(0, 10));
+
+          // 3) Satır satır tara — "Vardiya Sorumlusu" veya ayarlardaki şef isimleri
+          let foundCount = 0;
           for (let r = 0; r < rawData.length; r++) {
             const row = rawData[r];
-            if (!row) continue;
+            if (!row || row.length < 3) continue;
 
-            const rowTexts = row.map((c: any) => cleanStr(c));
+            // Tüm hücreleri normalize et
+            const rowTexts: string[] = row.map((c: any) => cleanStr(c));
+            const rowJoined = rowTexts.join(' ');
             
-            // "Vardiya Sorumlusu" kontrolü
-            const hasVS = rowTexts.some((t: string) => 
-              t.includes('VARDIYA SORUMLUSU') || t.includes('VARDİYA SORUMLUSU') || 
-              t.includes('V.SORUMLUSU') || t.includes('V. SORUMLUSU') ||
-              t.includes('VARDIYA SOR') || t.includes('VARDİYA SOR') ||
-              t.includes('V.SOR') || t.includes('SHIFT SUPERVISOR')
-            );
+            // "Vardiya Sorumlusu" kontrolü (geniş)
+            const hasVS = rowJoined.includes('VARDIYA SORUMLU') || 
+                          rowJoined.includes('VARDİYA SORUMLU') ||
+                          rowJoined.includes('V.SORUMLU') ||
+                          rowJoined.includes('V. SORUMLU') ||
+                          rowJoined.includes('V.SOR') ||
+                          rowJoined.includes('SHIFT SUPER');
 
-            // Şef ismi eşleştirme
+            // E/L/N harf sayısı (bu satır program satırı mı?)
+            const shiftLetters = rowTexts.filter((t: string) => t === 'E' || t === 'L' || t === 'N' || t === 'O');
+            const hasShiftData = shiftLetters.length >= 3;
+
+            // Şef ismi ara
             let chiefName = '';
             
-            // Yöntem 1: Satırda ayarlardaki şef isimlerinden birini ara
+            // Yöntem 1: Ayarlardaki isimlerle eşleştir
             for (let c = 0; c < row.length; c++) {
               const cellVal = cleanStr(row[c]);
               if (cellVal.length < 3) continue;
+              // E, L, N, O gibi tek harfleri atla
+              if (cellVal.length <= 2) continue;
+              // Sadece rakamlardan oluşan hücreleri atla
+              if (/^\d+$/.test(cellVal)) continue;
               
               for (let si = 0; si < settingsChiefNames.length; si++) {
                 const sc = settingsChiefNames[si];
-                // İsmin parçaları eşleşiyor mu? (SERDAR → "SERDAR ERDOĞAN" satırında bulunur)
-                if (cellVal === sc || cellVal.includes(sc) || sc.includes(cellVal)) {
+                
+                // Tam eşleşme
+                if (cellVal === sc) {
                   chiefName = chiefs[si];
                   break;
                 }
-                // Soyisim eşleşmesi (en az 4 karakter)
-                const nameParts = sc.split(/\s+/);
-                const cellParts = cellVal.split(/\s+/);
-                for (const cp of cellParts) {
-                  if (cp.length >= 4 && nameParts.some(np => np === cp)) {
+                // Hücre şef ismini içeriyor veya şef ismi hücreyi içeriyor
+                if (cellVal.includes(sc) || sc.includes(cellVal)) {
+                  if (cellVal.length >= 4) { // Kısa false positive'leri engelle
                     chiefName = chiefs[si];
                     break;
                   }
+                }
+                // İsim veya soyisim parçası eşleşmesi
+                const scParts = sc.split(/\s+/);
+                const cellParts = cellVal.split(/\s+/);
+                for (const cp of cellParts) {
+                  if (cp.length >= 4) {
+                    for (const sp of scParts) {
+                      if (sp.length >= 4 && sp === cp) {
+                        chiefName = chiefs[si];
+                        break;
+                      }
+                    }
+                  }
+                  if (chiefName) break;
                 }
                 if (chiefName) break;
               }
               if (chiefName) break;
             }
 
-            // Yöntem 2: "Vardiya Sorumlusu" metninin devamında isim ara
+            // Yöntem 2: "Vardiya Sorumlusu" etiketinin yanındaki metni al
             if (!chiefName && hasVS) {
               for (let c = 0; c < row.length; c++) {
                 const cellVal = cleanStr(row[c]);
                 if (cellVal.includes('VARDIYA SORUMLU') || cellVal.includes('VARDİYA SORUMLU') || cellVal.includes('V.SOR')) {
-                  // Etiketin devamı
                   const afterLabel = cellVal
                     .replace(/VARD[İI]YA\s*SORUMLUSU/g, '')
                     .replace(/V\.?\s*SORUMLUSU/g, '')
                     .replace(/V\.SOR\.?/g, '')
                     .replace(/SHIFT\s*SUPERVISOR/g, '')
                     .trim();
-                  if (afterLabel.length > 3) chiefName = afterLabel;
+                  if (afterLabel.length > 3 && !/^[ELNO\s]+$/.test(afterLabel)) {
+                    chiefName = afterLabel;
+                  }
                   // Sonraki hücre
-                  if (!chiefName && c + 1 < row.length) {
-                    const nextVal = String(row[c + 1] || '').trim();
-                    if (nextVal.length > 3 && !/^[ELNO\d]+$/.test(nextVal)) chiefName = nextVal;
+                  if (!chiefName) {
+                    for (let nc = c + 1; nc < Math.min(c + 4, row.length); nc++) {
+                      const nextVal = String(row[nc] || '').trim();
+                      if (nextVal.length > 3 && !/^[ELNO\d\s]+$/.test(nextVal)) {
+                        chiefName = nextVal;
+                        break;
+                      }
+                    }
                   }
                   break;
                 }
               }
             }
 
-            // Eğer "Vardiya Sorumlusu" yoksa ama şef ismi varsa, E/L/N hücreleri de içeriyorsa kabul et
-            if (chiefName && !hasVS) {
-              const shiftLetterCount = rowTexts.filter((t: string) => t === 'E' || t === 'L' || t === 'N' || t === 'O').length;
-              if (shiftLetterCount < 3) continue; // Yeterli vardiya harfi yoksa bu satır program satırı değil
-            }
+            // Karar: Bu satır bir amir satırı mı?
+            const isChiefRow = (hasVS && chiefName) || (chiefName && hasShiftData);
+            if (!isChiefRow) continue;
 
-            // Vardiya Sorumlusu satırı ama isim bulunamadıysa atla
-            if (!chiefName) continue;
+            foundCount++;
+            console.log(`[Schedule] ✓ Satır ${r}: "${chiefName}" (VS=${hasVS}, shifts=${shiftLetters.length})`);
 
-            console.log(`[Schedule] Satır ${r}: Şef="${chiefName}", VS=${hasVS}`);
-
-            // 4) Her gün sütunundan E/L/N/O harfini oku
+            // 4) Gün sütunlarından vardiya harflerini oku
             let shiftCount = 0;
             for (const [dayStr, colIdx] of Object.entries(dayColMap)) {
               const dayNum = parseInt(dayStr);
-              const rawCellVal = String(row[colIdx] || '').trim().toUpperCase();
-              const cellVal = rawCellVal.replace(/\s+/g, '');
+              const rawVal = String(row[colIdx] || '').trim().toUpperCase().replace(/\s+/g, '');
               
               let shift = '';
-              if (cellVal === 'E') shift = 'EARLY';
-              else if (cellVal === 'L') shift = 'LATE';
-              else if (cellVal === 'N') shift = 'NIGHT';
-              // O, OFF, İ, vs. = Day off / izin, atla
+              if (rawVal === 'E') shift = 'EARLY';
+              else if (rawVal === 'L') shift = 'LATE';
+              else if (rawVal === 'N') shift = 'NIGHT';
               
               if (shift) {
                 const dateObj = new Date(Date.UTC(year, month, dayNum));
@@ -240,24 +266,28 @@ export default function YearlyAnalysisTab() {
                 }
               }
             }
-            console.log(`[Schedule]   → ${shiftCount} vardiya kaydı eklendi`);
+            console.log(`[Schedule]   → ${shiftCount} vardiya`);
           }
+          console.log(`[Schedule] Sayfada ${foundCount} amir satırı bulundu`);
         });
 
         chiefScheduleRef.current = allEntries;
         setChiefSchedule(allEntries);
-        console.log(`[Schedule] TOPLAM: ${allEntries.length} kayıt`);
+        console.log(`[Schedule] === TOPLAM: ${allEntries.length} kayıt ===`);
         
         if (allEntries.length > 0) {
           const uniqueChiefs = [...new Set(allEntries.map(e => e.chief))];
           const monthsFound = [...new Set(allEntries.map(e => e.date.substring(0, 7)))].sort();
-          alert(`✓ Çalışma programı yüklendi!\n\n${allEntries.length} vardiya kaydı bulundu.\nAmirler: ${uniqueChiefs.join(', ')}\nAylar: ${monthsFound.join(', ')}`);
+          alert(`✓ Çalışma programı yüklendi!\n\n${allEntries.length} vardiya kaydı\nAmirler (${uniqueChiefs.length}): ${uniqueChiefs.join(', ')}\nAylar: ${monthsFound.join(', ')}`);
         } else {
-          alert('Çalışma programında eşleşme bulunamadı.\n\nKontrol edin:\n• "Vardiya Sorumlusu" yazıyor mu?\n• Gün numaraları (1-31) sütun başlığı olarak var mı?\n• E/L/N harfleri vardiya hücrelerinde var mı?\n• Ayarlar\'daki şef isimleri doğru mu?\n\nDetay için tarayıcı konsoluna bakın (F12).');
+          // Detaylı hata: Veri var mı bak
+          const firstSheet = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { header: 1, defval: '' }) as any[][];
+          const sample = firstSheet.slice(0, 5).map((r, i) => `Satır ${i}: ${(r as any[]).slice(0, 6).join(' | ')}`).join('\n');
+          alert(`Eşleşme bulunamadı.\n\nİlk 5 satır:\n${sample}\n\nKontrol edin:\n• "Vardiya Sorumlusu" etiketi var mı?\n• 1-31 gün numaraları sütun başlığı mı?\n• Ayarlar'daki şef isimleri doğru mu?\n\nDetay: F12 → Console`);
         }
       } catch (err) { 
         console.error('[Schedule] HATA:', err);
-        alert('Çalışma programı okunamadı. Hata: ' + (err as Error).message); 
+        alert('Çalışma programı okunamadı: ' + (err as Error).message); 
       }
     };
     reader.readAsArrayBuffer(file);
