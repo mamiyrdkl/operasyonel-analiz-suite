@@ -1,5 +1,5 @@
 'use client';
-import { useState, useMemo, useRef } from 'react';
+import React, { useState, useMemo, useRef } from 'react';
 import { BarChart3, FolderOpen, RefreshCw, FileSpreadsheet, CalendarDays, Users, AlertTriangle, Clock, ChevronDown, ChevronUp, Upload, Trash2, X } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { HEADER_ALIASES, findColumnIndex, parseFlightDate, cleanStr, extractDelayColumns, parseDelayTime } from '@/lib/excelParser';
@@ -354,27 +354,35 @@ export default function YearlyAnalysisTab() {
     const schedule = chiefScheduleRef.current;
     if (schedule.length === 0) return '';
     
-    // 1. Tam eşleşme: tarih + vardiya
-    const exactMatch = schedule.find(e => e.date === dateIso && e.shift === shift);
-    if (exactMatch) return exactMatch.chief;
-    
-    // 2. Gün + vardiya eşleşmesi (ay/yıl farklı olsa bile)
-    const day = dateIso.split('-')[2]; // "25" from "2025-05-25"
-    const dayShiftMatch = schedule.find(e => e.date.endsWith('-' + day) && e.shift === shift);
-    if (dayShiftMatch) return dayShiftMatch.chief;
-    
-    // 3. Sadece gün eşleşmesi (vardiya da farklıysa)
-    const dayOnlyMatch = schedule.find(e => e.date.endsWith('-' + day) && e.shift !== 'OFF');
-    if (dayOnlyMatch) {
-      // Aynı güne birden fazla vardiya olabilir, ilkini döndür
-      return dayOnlyMatch.chief;
-    }
+    const [flightYear, flightMonthStr, flightDayStr] = dateIso.split('-');
+    const flightMonth = parseInt(flightMonthStr); // 01-12
+    const monthDay = `-${flightMonthStr}-${flightDayStr}`; // "-05-25"
+    const dayOnly = `-${flightDayStr}`; // "-25"
 
-    // Debug log (ilk 5 eşleşmeyen)
+    // 1. Tam eşleşme: tarih + vardiya
+    const exact = schedule.find(e => e.date === dateIso && e.shift === shift);
+    if (exact) return exact.chief;
+    
+    // 2. Aynı ay-gün + vardiya (yıl farklı olabilir)
+    const monthDayShift = schedule.find(e => e.date.endsWith(monthDay) && e.shift === shift);
+    if (monthDayShift) return monthDayShift.chief;
+    
+    // 3. Aynı ay-gün (vardiya farklı olabilir)
+    const monthDayOnly = schedule.find(e => e.date.endsWith(monthDay) && e.shift !== 'OFF');
+    if (monthDayOnly) return monthDayOnly.chief;
+    
+    // 4. Sadece gün + vardiya (herhangi ayda)
+    const dayShift = schedule.find(e => e.date.endsWith(dayOnly) && e.shift === shift);
+    if (dayShift) return dayShift.chief;
+    
+    // 5. Sadece gün (herhangi ayda, herhangi vardiya)
+    const dayAny = schedule.find(e => e.date.endsWith(dayOnly) && e.shift !== 'OFF');
+    if (dayAny) return dayAny.chief;
+
     if (findChiefDebugCount.current < 5) {
       findChiefDebugCount.current++;
-      console.log(`[FindChief] Eşleşmedi: flight_date=${dateIso}, flight_shift=${shift}`);
-      console.log(`[FindChief] Schedule sample:`, schedule.slice(0, 5).map(e => `${e.date} | ${e.shift} | ${e.chief}`));
+      console.log(`[FindChief] Eşleşmedi: ${dateIso} / ${shift}`);
+      console.log(`[FindChief] Schedule:`, schedule.slice(0, 3).map(e => `${e.date}|${e.shift}|${e.chief}`));
     }
     return '';
   };
@@ -534,6 +542,22 @@ export default function YearlyAnalysisTab() {
       c[ch].count++; c[ch].mins += d.delayTimeVal;
     });
     return Object.values(c).sort((a, b) => b.mins - a.mins);
+  }, [data]);
+
+  // Chief monthly breakdown (amir başına aylık detay)
+  const chiefMonthlyDetail = useMemo(() => {
+    const result: Record<string, { months: Record<number, { count: number; mins: number; flights: YearlyRecord[] }> }> = {};
+    data.forEach(d => {
+      const ch = d.chief || 'ATANMAMIŞ';
+      if (!result[ch]) {
+        result[ch] = { months: {} };
+        for (let i = 0; i < 12; i++) result[ch].months[i] = { count: 0, mins: 0, flights: [] };
+      }
+      result[ch].months[d.month].count++;
+      result[ch].months[d.month].mins += d.delayTimeVal;
+      result[ch].months[d.month].flights.push(d);
+    });
+    return result;
   }, [data]);
 
   // Monthly chart data
@@ -985,11 +1009,12 @@ export default function YearlyAnalysisTab() {
 
           {/* ===== CHIEF VIEW ===== */}
           {hasData && activeView === 'chief' && (
-            <div className="flex flex-col gap-3">
+            <div className="flex flex-col gap-3 overflow-auto">
+              {/* Özet: Pie + Performans Tablosu */}
               <div className="grid grid-cols-2 gap-3">
-                <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-4 h-[300px]">
+                <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-4 h-[280px]">
                   <h3 className="text-[11px] font-bold text-slate-500 tracking-widest mb-2">AMİR DAĞILIMI</h3>
-                  <div className="h-[240px]">
+                  <div className="h-[220px]">
                     {chiefStats.filter(c => c.chief !== 'ATANMAMIŞ').length > 0 ? (
                       <Pie data={chiefPieData} options={{ responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'right', labels: { boxWidth: 8, font: { size: 9 } } } } }} />
                     ) : (
@@ -998,8 +1023,8 @@ export default function YearlyAnalysisTab() {
                   </div>
                 </div>
                 <div className="bg-white rounded-xl border-2 border-slate-300 overflow-hidden shadow-sm">
-                  <div className="bg-slate-100/50 px-3 py-2 border-b border-slate-200"><span className="text-[10px] font-bold text-slate-600 uppercase tracking-wider">Amir Performans Tablosu</span></div>
-                  <div className="overflow-auto max-h-[260px]">
+                  <div className="bg-slate-100/50 px-3 py-2 border-b border-slate-200"><span className="text-[10px] font-bold text-slate-600 uppercase tracking-wider">Amir Performans Özeti</span></div>
+                  <div className="overflow-auto max-h-[240px]">
                     <table className="excel-table w-full text-[10px] text-center">
                       <thead className="sticky top-0"><tr>
                         <th className="bg-slate-200 text-slate-700 border-b font-bold">AMİR</th>
@@ -1009,7 +1034,7 @@ export default function YearlyAnalysisTab() {
                         <th className="bg-slate-200 text-slate-700 border-b font-bold">%</th>
                       </tr></thead>
                       <tbody>
-                        {chiefStats.map((cs, i) => (
+                        {chiefStats.map(cs => (
                           <tr key={cs.chief} className="hover:bg-slate-50 border-b border-slate-100">
                             <td className={`font-bold text-left pl-2 ${cs.chief === 'ATANMAMIŞ' ? 'text-slate-400 italic' : 'text-slate-800'}`}>{cs.chief}</td>
                             <td>{cs.count}</td>
@@ -1023,10 +1048,132 @@ export default function YearlyAnalysisTab() {
                   </div>
                 </div>
               </div>
+
+              {/* Aylık Amir Detay Kırılımı */}
+              <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+                <div className="bg-gradient-to-r from-slate-800 to-slate-700 px-4 py-2">
+                  <span className="text-[11px] font-bold text-white uppercase tracking-wider">Amir Bazlı Aylık Kırılım</span>
+                </div>
+                <div className="overflow-auto">
+                  <table className="w-full text-[10px] text-center">
+                    <thead>
+                      <tr>
+                        <th className="bg-slate-100 text-slate-700 border-b border-r font-bold px-3 py-2 text-left sticky left-0 z-10">AMİR</th>
+                        {MONTH_NAMES.map(m => (
+                          <th key={m} className="bg-slate-100 text-slate-600 border-b font-bold px-1 py-2 min-w-[55px]" colSpan={2}>{m}</th>
+                        ))}
+                        <th className="bg-slate-800 text-white border-b font-bold px-2 py-2" colSpan={2}>TOPLAM</th>
+                      </tr>
+                      <tr>
+                        <th className="bg-slate-50 border-b border-r sticky left-0 z-10"></th>
+                        {MONTH_NAMES.map(m => (
+                          <React.Fragment key={m + '_sub'}>
+                            <th className="bg-slate-50 border-b text-[8px] text-slate-400 font-medium px-1">Adet</th>
+                            <th className="bg-slate-50 border-b text-[8px] text-slate-400 font-medium px-1">Dk</th>
+                          </React.Fragment>
+                        ))}
+                        <th className="bg-slate-700 text-white border-b text-[8px] font-medium px-1">Adet</th>
+                        <th className="bg-slate-700 text-white border-b text-[8px] font-medium px-1">Dk</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {chiefStats.filter(cs => cs.chief !== 'ATANMAMIŞ').map((cs, idx) => {
+                        const detail = chiefMonthlyDetail[cs.chief];
+                        if (!detail) return null;
+                        return (
+                          <tr key={cs.chief} className={`border-b border-slate-100 hover:bg-blue-50/40 ${idx % 2 === 0 ? 'bg-white' : 'bg-slate-50/50'}`}>
+                            <td className="font-bold text-left pl-3 pr-2 py-1.5 border-r text-slate-800 whitespace-nowrap sticky left-0 z-10 bg-inherit">{cs.chief}</td>
+                            {MONTH_NAMES.map((_, mi) => {
+                              const md = detail.months[mi];
+                              return (
+                                <React.Fragment key={mi}>
+                                  <td className={`py-1 ${md.count > 0 ? 'text-slate-800 font-semibold' : 'text-slate-300'}`}>{md.count || '-'}</td>
+                                  <td className={`py-1 ${md.mins > 0 ? 'text-rose-600 font-bold' : 'text-slate-300'}`}>{md.mins || '-'}</td>
+                                </React.Fragment>
+                              );
+                            })}
+                            <td className="py-1 font-black text-slate-900 bg-slate-100">{cs.count}</td>
+                            <td className="py-1 font-black text-rose-700 bg-slate-100">{cs.mins}</td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              {/* Her amir için detay kartları */}
+              {chiefStats.filter(cs => cs.chief !== 'ATANMAMIŞ').map(cs => {
+                const detail = chiefMonthlyDetail[cs.chief];
+                if (!detail) return null;
+                const activeMonths = Object.entries(detail.months).filter(([_, v]) => v.count > 0);
+                return (
+                  <div key={cs.chief} className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+                    <div className="bg-gradient-to-r from-blue-700 to-blue-600 px-4 py-2 flex justify-between items-center">
+                      <span className="text-white font-bold text-xs">{cs.chief}</span>
+                      <div className="flex gap-3 text-[10px] text-blue-200">
+                        <span>{cs.count} gecikme</span>
+                        <span className="font-bold text-white">{cs.mins} dk</span>
+                        <span>ort. {Math.round(cs.mins / cs.count)} dk</span>
+                      </div>
+                    </div>
+                    <div className="p-3">
+                      {activeMonths.length === 0 ? (
+                        <div className="text-xs text-slate-400 italic text-center py-2">Bu amir için gecikme kaydı yok</div>
+                      ) : (
+                        <div className="space-y-2">
+                          {activeMonths.map(([mIdx, mData]) => (
+                            <div key={mIdx} className="border border-slate-200 rounded-lg overflow-hidden">
+                              <div className="bg-slate-50 px-3 py-1 flex justify-between items-center border-b border-slate-200">
+                                <span className="text-[10px] font-bold text-slate-700">{MONTH_NAMES[parseInt(mIdx)]}</span>
+                                <div className="flex gap-3 text-[9px] text-slate-500">
+                                  <span>{mData.count} uçuş</span>
+                                  <span className="font-bold text-rose-600">{mData.mins} dk</span>
+                                </div>
+                              </div>
+                              <table className="w-full text-[9px]">
+                                <thead>
+                                  <tr className="bg-slate-100/50">
+                                    <th className="text-left pl-2 py-1 text-slate-500">TARİH</th>
+                                    <th className="text-slate-500 py-1">VARDİYA</th>
+                                    <th className="text-slate-500 py-1">UÇUŞ</th>
+                                    <th className="text-slate-500 py-1">KALKIŞ</th>
+                                    <th className="text-slate-500 py-1">VARIŞ</th>
+                                    <th className="text-slate-500 py-1">STD</th>
+                                    <th className="text-slate-500 py-1">ATD</th>
+                                    <th className="text-slate-500 py-1">KOD</th>
+                                    <th className="text-slate-500 py-1">SÜRE</th>
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {mData.flights.sort((a, b) => a.date.localeCompare(b.date)).map((f, fi) => (
+                                    <tr key={fi} className={`border-t border-slate-100 ${fi % 2 === 0 ? '' : 'bg-slate-50/50'}`}>
+                                      <td className="pl-2 py-0.5 text-slate-700">{f.date}</td>
+                                      <td className="text-center"><span className={`px-1 rounded text-white text-[8px] font-bold ${f.shift === 'EARLY' ? 'bg-amber-500' : f.shift === 'LATE' ? 'bg-cyan-600' : 'bg-indigo-600'}`}>{f.shift.charAt(0)}</span></td>
+                                      <td className="text-center font-medium text-slate-800">{f.flight}</td>
+                                      <td className="text-center text-slate-600">{f.depPort}</td>
+                                      <td className="text-center text-slate-600">{f.arrPort}</td>
+                                      <td className="text-center text-slate-500">{f.std}</td>
+                                      <td className="text-center text-slate-500">{f.atd}</td>
+                                      <td className="text-center"><span className="bg-red-100 text-red-700 px-1 rounded font-bold text-[8px]">{f.delayCode}</span></td>
+                                      <td className="text-center font-black text-rose-600">{f.delayTimeVal}</td>
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+
               {chiefStats.some(c => c.chief === 'ATANMAMIŞ') && (
-                <div className="bg-purple-50 border border-purple-200 rounded-lg px-4 py-2 text-xs text-purple-700 flex items-center gap-2">
-                  <Upload className="w-4 h-4" />
-                  <span><strong>İpucu:</strong> Çalışma programı yüklerseniz amirler tarih ve vardiyaya göre otomatik eşleşir. (TARİH / VARDİYA / AMİR sütunları içeren Excel dosyası)</span>
+                <div className="bg-amber-50 border border-amber-300 rounded-lg px-4 py-2 text-xs text-amber-800 flex items-center gap-2">
+                  <AlertTriangle className="w-4 h-4" />
+                  <span><strong>{chiefStats.find(c => c.chief === 'ATANMAMIŞ')?.count || 0} gecikme</strong> amir eşleştirilemedi. Çalışma programını ve Ayarlar'daki şef isimlerini kontrol edin.</span>
                 </div>
               )}
             </div>
