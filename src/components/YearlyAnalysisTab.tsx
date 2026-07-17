@@ -68,226 +68,148 @@ export default function YearlyAnalysisTab() {
     const f = e.target.files?.[0];
     if (f) {
       setScheduleFile(f);
-      parseSchedule(f);
+      parseScheduleFile(f);
     }
   };
 
-  // ===================== PARSE SCHEDULE (Pivot Format) =====================
-  // Excel formatı: Satırlar = kişiler, Sütunlar = günler (1-31)
-  // "Vardiya Sorumlusu" yazan satırlardaki isimler baz alınır
-  // Hücrelerde: E=EARLY, L=LATE, N=NIGHT, O=DAY OFF
-  const parseSchedule = (file: File) => {
+  // ===================== PARSE SCHEDULE =====================
+  const parseScheduleFile = (file: File) => {
     const reader = new FileReader();
-    reader.onload = (e) => {
+    reader.onload = (ev) => {
       try {
-        const wb = XLSX.read(new Uint8Array(e.target?.result as ArrayBuffer), { type: 'array' });
+        const wb = XLSX.read(new Uint8Array(ev.target?.result as ArrayBuffer), { type: 'array' });
         const allEntries: ChiefScheduleEntry[] = [];
-        
         const settingsChiefNames = chiefs.map(c => cleanStr(c));
+        
         console.log('[Schedule] === BAŞLADI ===');
-        console.log('[Schedule] Ayarlardaki şefler:', chiefs);
-        console.log('[Schedule] Normalize:', settingsChiefNames);
-        console.log('[Schedule] Sayfa sayısı:', wb.SheetNames.length, '→', wb.SheetNames.join(', '));
+        console.log('[Schedule] Şefler:', chiefs);
+        console.log('[Schedule] Sayfalar:', wb.SheetNames.join(', '));
 
         wb.SheetNames.forEach((sheetName, sheetIdx) => {
           const rawData: any[][] = XLSX.utils.sheet_to_json(wb.Sheets[sheetName], { header: 1, defval: '' });
           if (!rawData || rawData.length === 0) return;
-          console.log(`\n[Schedule] ====== SAYFA: "${sheetName}" (${rawData.length} satır) ======`);
+          console.log(`\n[Schedule] ====== "${sheetName}" (${rawData.length} satır) ======`);
 
-          // 1) Ay/yıl tespiti
+          // Ay/Yıl tespiti
           let monthYear = detectMonthYear(sheetName, file.name, rawData);
           if (!monthYear) {
-            const currentYear = new Date().getFullYear();
+            const cy = new Date().getFullYear();
             monthYear = wb.SheetNames.length === 1
-              ? { month: new Date().getMonth(), year: currentYear }
-              : { month: sheetIdx % 12, year: currentYear };
-            console.log('[Schedule] Ay fallback:', MONTH_NAMES[monthYear.month], monthYear.year);
+              ? { month: new Date().getMonth(), year: cy }
+              : { month: sheetIdx % 12, year: cy };
           }
           const { month, year } = monthYear;
-          console.log(`[Schedule] Ay: ${MONTH_NAMES[month]} ${year}`);
+          console.log(`[Schedule] → ${MONTH_NAMES[month]} ${year}`);
 
-          // 2) Gün sütunlarını bul — TÜM satırları tara (ilk 100)
+          // Gün sütunlarını bul
           let dayHeaderRowIdx = -1;
           let dayColMap: Record<number, number> = {};
           let bestDayCount = 0;
-
           for (let r = 0; r < Math.min(100, rawData.length); r++) {
             const row = rawData[r];
             if (!row) continue;
-            const numericCols: Record<number, number> = {};
-            let numCount = 0;
-            
+            const numCols: Record<number, number> = {};
+            let cnt = 0;
             for (let c = 0; c < row.length; c++) {
-              const raw = row[c];
-              const val = typeof raw === 'number' ? raw : parseInt(String(raw).trim());
-              if (!isNaN(val) && val >= 1 && val <= 31 && Number.isInteger(val)) {
-                numericCols[val] = c;
-                numCount++;
-              }
+              const v = typeof row[c] === 'number' ? row[c] : parseInt(String(row[c]).trim());
+              if (!isNaN(v) && v >= 1 && v <= 31 && Number.isInteger(v)) { numCols[v] = c; cnt++; }
             }
-            // En iyi satırı seç (en fazla gün bulunan)
-            if (numCount >= 5 && numCount > bestDayCount) {
-              bestDayCount = numCount;
-              dayHeaderRowIdx = r;
-              dayColMap = numericCols;
-            }
+            if (cnt >= 5 && cnt > bestDayCount) { bestDayCount = cnt; dayHeaderRowIdx = r; dayColMap = numCols; }
           }
+          if (dayHeaderRowIdx === -1) { console.log('[Schedule] Gün sütunları bulunamadı!'); return; }
+          console.log(`[Schedule] Gün satırı: ${dayHeaderRowIdx}, ${Object.keys(dayColMap).length} gün`);
 
-          console.log(`[Schedule] Gün başlık satırı: ${dayHeaderRowIdx}, Gün sütun sayısı: ${Object.keys(dayColMap).length}`);
-          if (dayHeaderRowIdx === -1) {
-            console.log('[Schedule] UYARI: Gün sütunları bulunamadı, sayfa atlanıyor');
-            return;
-          }
-
-          // İlk birkaç satırı dump et (debug)
-          console.log('[Schedule] İlk veri satırı (r+1):', rawData[dayHeaderRowIdx + 1]?.slice(0, 10));
-
-          // 3) Satır satır tara — "Vardiya Sorumlusu" veya ayarlardaki şef isimleri
-          let foundCount = 0;
+          // PASS 1: Her satırdaki isim ve shift verisini çıkar
+          const rowData: { idx: number; chief: string; shiftCnt: number }[] = [];
           for (let r = 0; r < rawData.length; r++) {
             const row = rawData[r];
-            if (!row || row.length < 3) continue;
+            if (!row || row.length < 2) continue;
 
-            // Tüm hücreleri normalize et
-            const rowTexts: string[] = row.map((c: any) => cleanStr(c));
-            const rowJoined = rowTexts.join(' ');
-            
-            // "Vardiya Sorumlusu" kontrolü (geniş)
-            const hasVS = rowJoined.includes('VARDIYA SORUMLU') || 
-                          rowJoined.includes('VARDİYA SORUMLU') ||
-                          rowJoined.includes('V.SORUMLU') ||
-                          rowJoined.includes('V. SORUMLU') ||
-                          rowJoined.includes('V.SOR') ||
-                          rowJoined.includes('SHIFT SUPER');
-
-            // E/L/N harf sayısı (bu satır program satırı mı?)
-            const shiftLetters = rowTexts.filter((t: string) => t === 'E' || t === 'L' || t === 'N' || t === 'O');
-            const hasShiftData = shiftLetters.length >= 3;
+            // Gün sütunlarındaki E/L/N sayısını say
+            let shiftCnt = 0;
+            for (const colIdx of Object.values(dayColMap)) {
+              const v = String(row[colIdx] || '').trim().toUpperCase();
+              if (v === 'E' || v === 'L' || v === 'N') shiftCnt++;
+            }
 
             // Şef ismi ara
-            let chiefName = '';
-            
-            // Yöntem 1: Ayarlardaki isimlerle eşleştir
+            let chief = '';
             for (let c = 0; c < row.length; c++) {
-              const cellVal = cleanStr(row[c]);
-              if (cellVal.length < 3) continue;
-              // E, L, N, O gibi tek harfleri atla
-              if (cellVal.length <= 2) continue;
-              // Sadece rakamlardan oluşan hücreleri atla
-              if (/^\d+$/.test(cellVal)) continue;
-              
+              const cv = cleanStr(row[c]);
+              if (cv.length < 3 || /^\d+$/.test(cv)) continue;
               for (let si = 0; si < settingsChiefNames.length; si++) {
                 const sc = settingsChiefNames[si];
-                
-                // Tam eşleşme
-                if (cellVal === sc) {
-                  chiefName = chiefs[si];
-                  break;
+                if (cv === sc) { chief = chiefs[si]; break; }
+                if ((cv.includes(sc) || sc.includes(cv)) && cv.length >= 4) { chief = chiefs[si]; break; }
+                // Soyisim eşleşmesi
+                const sParts = sc.split(/\s+/);
+                const cParts = cv.split(/\s+/);
+                for (const cp of cParts) {
+                  if (cp.length >= 4 && sParts.some(sp => sp.length >= 4 && sp === cp)) { chief = chiefs[si]; break; }
                 }
-                // Hücre şef ismini içeriyor veya şef ismi hücreyi içeriyor
-                if (cellVal.includes(sc) || sc.includes(cellVal)) {
-                  if (cellVal.length >= 4) { // Kısa false positive'leri engelle
-                    chiefName = chiefs[si];
-                    break;
-                  }
-                }
-                // İsim veya soyisim parçası eşleşmesi
-                const scParts = sc.split(/\s+/);
-                const cellParts = cellVal.split(/\s+/);
-                for (const cp of cellParts) {
-                  if (cp.length >= 4) {
-                    for (const sp of scParts) {
-                      if (sp.length >= 4 && sp === cp) {
-                        chiefName = chiefs[si];
-                        break;
-                      }
-                    }
-                  }
-                  if (chiefName) break;
-                }
-                if (chiefName) break;
+                if (chief) break;
               }
-              if (chiefName) break;
+              if (chief) break;
             }
+            rowData.push({ idx: r, chief, shiftCnt });
+          }
 
-            // Yöntem 2: "Vardiya Sorumlusu" etiketinin yanındaki metni al
-            if (!chiefName && hasVS) {
-              for (let c = 0; c < row.length; c++) {
-                const cellVal = cleanStr(row[c]);
-                if (cellVal.includes('VARDIYA SORUMLU') || cellVal.includes('VARDİYA SORUMLU') || cellVal.includes('V.SOR')) {
-                  const afterLabel = cellVal
-                    .replace(/VARD[İI]YA\s*SORUMLUSU/g, '')
-                    .replace(/V\.?\s*SORUMLUSU/g, '')
-                    .replace(/V\.SOR\.?/g, '')
-                    .replace(/SHIFT\s*SUPERVISOR/g, '')
-                    .trim();
-                  if (afterLabel.length > 3 && !/^[ELNO\s]+$/.test(afterLabel)) {
-                    chiefName = afterLabel;
-                  }
-                  // Sonraki hücre
-                  if (!chiefName) {
-                    for (let nc = c + 1; nc < Math.min(c + 4, row.length); nc++) {
-                      const nextVal = String(row[nc] || '').trim();
-                      if (nextVal.length > 3 && !/^[ELNO\d\s]+$/.test(nextVal)) {
-                        chiefName = nextVal;
-                        break;
-                      }
-                    }
-                  }
-                  break;
-                }
+          // PASS 2: E/L/N olan satırlar için yukarıya bakarak en yakın ismi bul
+          let foundCount = 0;
+          for (const rd of rowData) {
+            if (rd.shiftCnt < 3) continue;
+            
+            let assignedChief = rd.chief;
+            if (!assignedChief) {
+              // Yukarıya bak
+              for (let look = rowData.indexOf(rd) - 1; look >= 0; look--) {
+                if (rowData[look].chief) { assignedChief = rowData[look].chief; break; }
               }
             }
-
-            // Karar: Bu satır bir amir satırı mı?
-            const isChiefRow = (hasVS && chiefName) || (chiefName && hasShiftData);
-            if (!isChiefRow) continue;
+            if (!assignedChief) {
+              console.log(`[Schedule] ✗ Satır ${rd.idx}: ${rd.shiftCnt} shift ama isim yok`);
+              continue;
+            }
 
             foundCount++;
-            console.log(`[Schedule] ✓ Satır ${r}: "${chiefName}" (VS=${hasVS}, shifts=${shiftLetters.length})`);
-
-            // 4) Gün sütunlarından vardiya harflerini oku
-            let shiftCount = 0;
+            const row = rawData[rd.idx];
+            let added = 0;
             for (const [dayStr, colIdx] of Object.entries(dayColMap)) {
               const dayNum = parseInt(dayStr);
-              const rawVal = String(row[colIdx] || '').trim().toUpperCase().replace(/\s+/g, '');
-              
+              const v = String(row[colIdx] || '').trim().toUpperCase();
               let shift = '';
-              if (rawVal === 'E') shift = 'EARLY';
-              else if (rawVal === 'L') shift = 'LATE';
-              else if (rawVal === 'N') shift = 'NIGHT';
-              
+              if (v === 'E') shift = 'EARLY';
+              else if (v === 'L') shift = 'LATE';
+              else if (v === 'N') shift = 'NIGHT';
               if (shift) {
-                const dateObj = new Date(Date.UTC(year, month, dayNum));
-                if (dateObj.getUTCMonth() === month && dateObj.getUTCDate() === dayNum) {
-                  const dateIso = dateObj.toISOString().split('T')[0];
-                  allEntries.push({ date: dateIso, shift, chief: chiefName });
-                  shiftCount++;
+                const dt = new Date(Date.UTC(year, month, dayNum));
+                if (dt.getUTCMonth() === month && dt.getUTCDate() === dayNum) {
+                  allEntries.push({ date: dt.toISOString().split('T')[0], shift, chief: assignedChief });
+                  added++;
                 }
               }
             }
-            console.log(`[Schedule]   → ${shiftCount} vardiya`);
+            console.log(`[Schedule] ✓ Satır ${rd.idx}: "${assignedChief}" → ${added} vardiya`);
           }
-          console.log(`[Schedule] Sayfada ${foundCount} amir satırı bulundu`);
+          console.log(`[Schedule] Sayfa: ${foundCount} amir satırı`);
         });
 
         chiefScheduleRef.current = allEntries;
         setChiefSchedule(allEntries);
-        console.log(`[Schedule] === TOPLAM: ${allEntries.length} kayıt ===`);
-        
+
+        const uChiefs = [...new Set(allEntries.map(e => e.chief))];
+        const uMonths = [...new Set(allEntries.map(e => e.date.substring(0, 7)))].sort();
+        console.log(`[Schedule] === TOPLAM: ${allEntries.length} kayıt, ${uChiefs.length} amir ===`);
+
         if (allEntries.length > 0) {
-          const uniqueChiefs = [...new Set(allEntries.map(e => e.chief))];
-          const monthsFound = [...new Set(allEntries.map(e => e.date.substring(0, 7)))].sort();
-          alert(`✓ Çalışma programı yüklendi!\n\n${allEntries.length} vardiya kaydı\nAmirler (${uniqueChiefs.length}): ${uniqueChiefs.join(', ')}\nAylar: ${monthsFound.join(', ')}`);
+          const perChief = uChiefs.map(ch => `${ch}: ${allEntries.filter(e => e.chief === ch).length} vardiya`);
+          alert(`✓ Çalışma programı yüklendi!\n\n${allEntries.length} vardiya kaydı\n\n${perChief.join('\n')}\n\nAylar: ${uMonths.join(', ')}`);
         } else {
-          // Detaylı hata: Veri var mı bak
-          const firstSheet = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { header: 1, defval: '' }) as any[][];
-          const sample = firstSheet.slice(0, 5).map((r, i) => `Satır ${i}: ${(r as any[]).slice(0, 6).join(' | ')}`).join('\n');
-          alert(`Eşleşme bulunamadı.\n\nİlk 5 satır:\n${sample}\n\nKontrol edin:\n• "Vardiya Sorumlusu" etiketi var mı?\n• 1-31 gün numaraları sütun başlığı mı?\n• Ayarlar'daki şef isimleri doğru mu?\n\nDetay: F12 → Console`);
+          alert('Eşleşme bulunamadı. F12 → Console ile detayları kontrol edin.');
         }
-      } catch (err) { 
+      } catch (err) {
         console.error('[Schedule] HATA:', err);
-        alert('Çalışma programı okunamadı: ' + (err as Error).message); 
+        alert('Çalışma programı okunamadı: ' + (err as Error).message);
       }
     };
     reader.readAsArrayBuffer(file);
@@ -480,8 +402,19 @@ export default function YearlyAnalysisTab() {
             delayCols.forEach((g: any) => {
               const code = cleanStr(row[g.codeIdx]);
               const time = parseDelayTime(row[g.timeIdx]);
-              const matched = delayCodes.find(c => c.code === code);
-              if (matched && time >= 15) {
+              if (!code || time < 15) return;
+              
+              // Esnek gecikme kodu eşleştirme:
+              // 1. Tam eşleşme: "64B" === "64B"
+              // 2. Excel kodu ayar kodunun başlangıcı: "64" → "64B" (ayardaki)
+              // 3. Ayar kodu Excel kodunun başlangıcı: "64B" (ayardaki) → "64" (Excel'deki)
+              const matched = delayCodes.find(c => 
+                c.code === code || 
+                code.startsWith(c.code) || 
+                c.code.startsWith(code)
+              );
+              
+              if (matched) {
                 results.push({
                   date: dateStr, dateIso, month: monthIdx, monthName: MONTH_NAMES[monthIdx],
                   shift, flight: row[idxFlight],
