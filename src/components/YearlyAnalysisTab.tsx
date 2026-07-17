@@ -24,6 +24,18 @@ type YearlyRecord = {
 
 type ChiefScheduleEntry = { date: string; shift: string; chief: string };
 
+// Türkçe karakter normalize — İ→I, Ş→S, Ç→C, Ü→U, Ö→O, Ğ→G, ı→I
+const normalizeTR = (s: string): string => {
+  return s
+    .replace(/İ/g, 'I').replace(/ı/g, 'I')
+    .replace(/Ş/g, 'S').replace(/ş/g, 'S')
+    .replace(/Ç/g, 'C').replace(/ç/g, 'C')
+    .replace(/Ü/g, 'U').replace(/ü/g, 'U')
+    .replace(/Ö/g, 'O').replace(/ö/g, 'O')
+    .replace(/Ğ/g, 'G').replace(/ğ/g, 'G')
+    .toUpperCase();
+};
+
 // ===================== COMPONENT =====================
 export default function YearlyAnalysisTab() {
   const { delayCodes, chiefs } = useSettings();
@@ -80,9 +92,11 @@ export default function YearlyAnalysisTab() {
         const wb = XLSX.read(new Uint8Array(ev.target?.result as ArrayBuffer), { type: 'array' });
         const allEntries: ChiefScheduleEntry[] = [];
         const settingsChiefNames = chiefs.map(c => cleanStr(c));
+        const settingsChiefNorm = chiefs.map(c => normalizeTR(cleanStr(c)));
         
         console.log('[Schedule] === BAŞLADI ===');
         console.log('[Schedule] Şefler:', chiefs);
+        console.log('[Schedule] Normalize:', settingsChiefNorm);
         console.log('[Schedule] Sayfalar:', wb.SheetNames.join(', '));
 
         wb.SheetNames.forEach((sheetName, sheetIdx) => {
@@ -132,18 +146,21 @@ export default function YearlyAnalysisTab() {
               if (v === 'E' || v === 'L' || v === 'N') shiftCnt++;
             }
 
-            // Şef ismi ara
+            // Şef ismi ara — Türkçe karakter normalize ile
             let chief = '';
             for (let c = 0; c < row.length; c++) {
               const cv = cleanStr(row[c]);
+              const cvNorm = normalizeTR(cv);
               if (cv.length < 3 || /^\d+$/.test(cv)) continue;
-              for (let si = 0; si < settingsChiefNames.length; si++) {
-                const sc = settingsChiefNames[si];
-                if (cv === sc) { chief = chiefs[si]; break; }
-                if ((cv.includes(sc) || sc.includes(cv)) && cv.length >= 4) { chief = chiefs[si]; break; }
-                // Soyisim eşleşmesi
-                const sParts = sc.split(/\s+/);
-                const cParts = cv.split(/\s+/);
+              for (let si = 0; si < settingsChiefNorm.length; si++) {
+                const scNorm = settingsChiefNorm[si];
+                // Tam eşleşme (normalize)
+                if (cvNorm === scNorm) { chief = chiefs[si]; break; }
+                // İçerik eşleşmesi (normalize)
+                if ((cvNorm.includes(scNorm) || scNorm.includes(cvNorm)) && cv.length >= 4) { chief = chiefs[si]; break; }
+                // Soyisim eşleşmesi (normalize)
+                const sParts = scNorm.split(/\s+/);
+                const cParts = cvNorm.split(/\s+/);
                 for (const cp of cParts) {
                   if (cp.length >= 4 && sParts.some(sp => sp.length >= 4 && sp === cp)) { chief = chiefs[si]; break; }
                 }
