@@ -487,7 +487,7 @@ export default function YearlyAnalysisTab() {
   const chiefStats = useMemo(() => {
     const c: Record<string, { chief: string; count: number; mins: number }> = {};
     data.forEach(d => {
-      const ch = d.chief || 'ATANMAMIŞ';
+      const ch = d.chief || 'DİĞER GECİKMELER';
       if (!c[ch]) c[ch] = { chief: ch, count: 0, mins: 0 };
       c[ch].count++; c[ch].mins += d.delayTimeVal;
     });
@@ -498,7 +498,7 @@ export default function YearlyAnalysisTab() {
   const chiefMonthlyDetail = useMemo(() => {
     const result: Record<string, { months: Record<number, { count: number; mins: number; flights: YearlyRecord[] }> }> = {};
     data.forEach(d => {
-      const ch = d.chief || 'ATANMAMIŞ';
+      const ch = d.chief || 'DİĞER GECİKMELER';
       if (!result[ch]) {
         result[ch] = { months: {} };
         for (let i = 0; i < 12; i++) result[ch].months[i] = { count: 0, mins: 0, flights: [] };
@@ -540,8 +540,8 @@ export default function YearlyAnalysisTab() {
 
   // Chief pie
   const chiefPieData = {
-    labels: chiefStats.filter(c => c.chief !== 'ATANMAMIŞ').map(c => c.chief),
-    datasets: [{ data: chiefStats.filter(c => c.chief !== 'ATANMAMIŞ').map(c => c.mins), backgroundColor: CODE_COLORS, borderWidth: 2, borderColor: '#fff' }]
+    labels: chiefStats.filter(c => c.chief !== 'DİĞER GECİKMELER').map(c => c.chief),
+    datasets: [{ data: chiefStats.filter(c => c.chief !== 'DİĞER GECİKMELER').map(c => c.mins), backgroundColor: CODE_COLORS, borderWidth: 2, borderColor: '#fff' }]
   };
 
   // ===================== EXCEL EXPORT =====================
@@ -581,7 +581,7 @@ export default function YearlyAnalysisTab() {
     const hr1 = ws1.addRow(h1);
     hr1.eachCell(c => { c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1F4E79' } }; c.font = { bold: true, color: { argb: 'FFFFFFFF' } }; c.border = border; c.alignment = { horizontal: 'center', vertical: 'middle' }; });
     data.forEach((r, i) => {
-      const dr = ws1.addRow([r.date, r.shift, r.chief || 'ATANMAMIŞ', r.flight, r.depPort, r.arrPort, r.std, r.atd, r.delayCode, r.delayTimeVal, r.desc]);
+      const dr = ws1.addRow([r.date, r.shift, r.chief || 'DİĞER GECİKMELER', r.flight, r.depPort, r.arrPort, r.std, r.atd, r.delayCode, r.delayTimeVal, r.desc]);
       dr.eachCell(c => { c.border = border; c.font = { name: 'Calibri', size: 11 }; if (i % 2 !== 0) c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFEBF5FB' } }; });
     });
     [12,12,20,12,8,8,8,8,10,12,30].forEach((w, i) => { ws1.getColumn(i + 1).width = w; });
@@ -965,7 +965,7 @@ export default function YearlyAnalysisTab() {
                 <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-4 h-[280px]">
                   <h3 className="text-[11px] font-bold text-slate-500 tracking-widest mb-2">AMİR DAĞILIMI</h3>
                   <div className="h-[220px]">
-                    {chiefStats.filter(c => c.chief !== 'ATANMAMIŞ').length > 0 ? (
+                    {chiefStats.filter(c => c.chief !== 'DİĞER GECİKMELER').length > 0 ? (
                       <Pie data={chiefPieData} options={{ responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'right', labels: { boxWidth: 8, font: { size: 9 } } } } }} />
                     ) : (
                       <div className="h-full flex items-center justify-center text-slate-400 italic text-xs">Çalışma programı yükleyin</div>
@@ -986,7 +986,7 @@ export default function YearlyAnalysisTab() {
                       <tbody>
                         {chiefStats.map(cs => (
                           <tr key={cs.chief} className="hover:bg-slate-50 border-b border-slate-100">
-                            <td className={`font-bold text-left pl-2 ${cs.chief === 'ATANMAMIŞ' ? 'text-slate-400 italic' : 'text-slate-800'}`}>{cs.chief}</td>
+                            <td className={`font-bold text-left pl-2 ${cs.chief === 'DİĞER GECİKMELER' ? 'text-slate-400 italic' : 'text-slate-800'}`}>{cs.chief}</td>
                             <td>{cs.count}</td>
                             <td className="font-black text-rose-600">{cs.mins}</td>
                             <td>{cs.count > 0 ? Math.round(cs.mins / cs.count) : '-'}</td>
@@ -1027,7 +1027,7 @@ export default function YearlyAnalysisTab() {
                       </tr>
                     </thead>
                     <tbody>
-                      {chiefStats.filter(cs => cs.chief !== 'ATANMAMIŞ').map((cs, idx) => {
+                      {chiefStats.filter(cs => cs.chief !== 'DİĞER GECİKMELER').map((cs, idx) => {
                         const detail = chiefMonthlyDetail[cs.chief];
                         if (!detail) return null;
                         return (
@@ -1053,7 +1053,7 @@ export default function YearlyAnalysisTab() {
               </div>
 
               {/* Her amir için detay kartları */}
-              {chiefStats.filter(cs => cs.chief !== 'ATANMAMIŞ').map(cs => {
+              {chiefStats.filter(cs => cs.chief !== 'DİĞER GECİKMELER').map(cs => {
                 const detail = chiefMonthlyDetail[cs.chief];
                 if (!detail) return null;
                 const activeMonths = Object.entries(detail.months).filter(([_, v]) => v.count > 0);
@@ -1120,10 +1120,10 @@ export default function YearlyAnalysisTab() {
                 );
               })}
 
-              {chiefStats.some(c => c.chief === 'ATANMAMIŞ') && (
+              {chiefStats.some(c => c.chief === 'DİĞER GECİKMELER') && (
                 <div className="bg-amber-50 border border-amber-300 rounded-lg px-4 py-2 text-xs text-amber-800 flex items-center gap-2">
                   <AlertTriangle className="w-4 h-4" />
-                  <span><strong>{chiefStats.find(c => c.chief === 'ATANMAMIŞ')?.count || 0} gecikme</strong> amir eşleştirilemedi. Çalışma programını ve Ayarlar'daki şef isimlerini kontrol edin.</span>
+                  <span><strong>{chiefStats.find(c => c.chief === 'DİĞER GECİKMELER')?.count || 0} gecikme</strong> amir eşleştirilemedi. Çalışma programını ve Ayarlar'daki şef isimlerini kontrol edin.</span>
                 </div>
               )}
             </div>

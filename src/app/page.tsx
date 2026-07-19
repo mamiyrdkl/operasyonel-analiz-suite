@@ -45,20 +45,21 @@ export default function DashboardPage() {
       {/* MAIN CONTENT AREA */}
       <div className="flex-1 flex flex-col relative overflow-hidden bg-slate-50/50">
         
-        {currentApp === 'HOTEL' && <HotelReservationTab />}
+        <div style={{ display: currentApp === 'HOTEL' ? 'contents' : 'none' }}><HotelReservationTab /></div>
         
-        {currentApp === 'CHECK_IN' && <CheckInReportTab />}
+        <div style={{ display: currentApp === 'CHECK_IN' ? 'contents' : 'none' }}><CheckInReportTab /></div>
 
-        {currentApp === 'DELAY_TRACKING' && <DelayTrackingTab />}
+        <div style={{ display: currentApp === 'DELAY_TRACKING' ? 'contents' : 'none' }}><DelayTrackingTab /></div>
 
-        {currentApp === 'CREW_CONNECTION' && <CrewConnectionTab />}
+        <div style={{ display: currentApp === 'CREW_CONNECTION' ? 'contents' : 'none' }}><CrewConnectionTab /></div>
+
 
         {currentApp === 'ANALYSIS_SUITE' && (
            <>
-             {activeTab === 'analysis' && <AnalysisTab />}
-             {activeTab === 'comparison' && <ComparisonTab />}
-             {activeTab === 'crewDelay' && <CrewDelayTab />}
-             {activeTab === 'yearlyAnalysis' && <YearlyAnalysisTab />}
+             <div style={{ display: activeTab === 'analysis' ? 'contents' : 'none' }}><AnalysisTab /></div>
+             <div style={{ display: activeTab === 'comparison' ? 'contents' : 'none' }}><ComparisonTab /></div>
+             <div style={{ display: activeTab === 'crewDelay' ? 'contents' : 'none' }}><CrewDelayTab /></div>
+             <div style={{ display: activeTab === 'yearlyAnalysis' ? 'contents' : 'none' }}><YearlyAnalysisTab /></div>
            </>
         )}
 

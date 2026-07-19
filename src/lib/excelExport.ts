@@ -80,7 +80,7 @@ export const exportToExcelWithLogo = async (processedData: any[]) => {
 
   processedData.forEach((row, index) => {
     const dataRow = worksheet1.addRow([
-      row.date, row.shift, row.chief || 'ATANMAMIŞ', row.flight, row.depPort, row.arrPort, row.std, row.atd, row.delayCode, row.delayTimeVal, row.remark, row.crewRemark || ''
+      row.date, row.shift, row.chief || 'DİĞER GECİKMELER', row.flight, row.depPort, row.arrPort, row.std, row.atd, row.delayCode, row.delayTimeVal, row.remark, row.crewRemark || ''
     ]);
     
     const isEven = index % 2 === 0;
@@ -135,7 +135,7 @@ export const exportToExcelWithLogo = async (processedData: any[]) => {
   processedData.forEach(d => {
       totalMins += d.delayTimeVal;
       if (shiftTotals[d.shift] !== undefined) shiftTotals[d.shift] += d.delayTimeVal;
-      const chief = d.chief || "ATANMAMIŞ";
+      const chief = d.chief || "DİĞER GECİKMELER";
       chiefTotals[chief] = (chiefTotals[chief] || 0) + d.delayTimeVal;
   });
 
