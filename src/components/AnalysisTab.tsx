@@ -2,7 +2,7 @@
 import { useState, useMemo } from 'react';
 import { RefreshCw, FolderOpen, Wand2, FileSpreadsheet, X, CodeSquare } from 'lucide-react';
 import * as XLSX from 'xlsx';
-import { HEADER_ALIASES, findColumnIndex, parseFlightDate, cleanStr, extractDelayColumns, parseDelayTime } from '@/lib/excelParser';
+import { HEADER_ALIASES, findColumnIndex, parseFlightDate, cleanStr, extractDelayColumns, parseDelayTime, matchDelayCode } from '@/lib/excelParser';
 import { exportToExcelWithLogo } from '@/lib/excelExport';
 import { Chart as ChartJS, ArcElement, Tooltip, Legend, CategoryScale, LinearScale, BarElement, Title } from 'chart.js';
 import { Pie, Bar } from 'react-chartjs-2';
@@ -123,7 +123,7 @@ export default function AnalysisTab() {
                 delayCols.forEach((g: any) => {
                     const code = cleanStr(row[g.codeIdx]);
                     const time = parseDelayTime(row[g.timeIdx]);
-                    const matchedCode = delayCodes.find(c => c.code === code);
+                    const matchedCode = matchDelayCode(code, delayCodes);
                     
                     if (matchedCode && time >= 15) {
                         parsedResults.push({

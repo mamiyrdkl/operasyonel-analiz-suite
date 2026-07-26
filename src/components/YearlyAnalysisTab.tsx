@@ -2,7 +2,7 @@
 import React, { useState, useMemo, useRef } from 'react';
 import { BarChart3, FolderOpen, RefreshCw, FileSpreadsheet, CalendarDays, Users, AlertTriangle, Clock, ChevronDown, ChevronUp, Upload, Trash2, X } from 'lucide-react';
 import * as XLSX from 'xlsx';
-import { HEADER_ALIASES, findColumnIndex, parseFlightDate, cleanStr, extractDelayColumns, parseDelayTime } from '@/lib/excelParser';
+import { HEADER_ALIASES, findColumnIndex, parseFlightDate, cleanStr, extractDelayColumns, parseDelayTime, matchDelayCode } from '@/lib/excelParser';
 import { useSettings } from '@/lib/useSettings';
 import ExcelJS from 'exceljs';
 import { saveAs } from 'file-saver';
@@ -421,15 +421,7 @@ export default function YearlyAnalysisTab() {
               const time = parseDelayTime(row[g.timeIdx]);
               if (!code || time < 15) return;
               
-              // Esnek gecikme kodu eşleştirme:
-              // 1. Tam eşleşme: "64B" === "64B"
-              // 2. Excel kodu ayar kodunun başlangıcı: "64" → "64B" (ayardaki)
-              // 3. Ayar kodu Excel kodunun başlangıcı: "64B" (ayardaki) → "64" (Excel'deki)
-              const matched = delayCodes.find(c => 
-                c.code === code || 
-                code.startsWith(c.code) || 
-                c.code.startsWith(code)
-              );
+              const matched = matchDelayCode(code, delayCodes);
               
               if (matched) {
                 results.push({
