@@ -82,6 +82,8 @@ export default function AnalysisTab() {
             const idxArrPort = findColumnIndex(headerRow, HEADER_ALIASES.arrPort);
             const idxStd = findColumnIndex(headerRow, HEADER_ALIASES.std);
             const idxAtd = findColumnIndex(headerRow, HEADER_ALIASES.atd);
+            const idxSta = findColumnIndex(headerRow, HEADER_ALIASES.sta);
+            const idxAta = findColumnIndex(headerRow, HEADER_ALIASES.ata);
             const idxRemark = findColumnIndex(headerRow, HEADER_ALIASES.remark);
             const idxDateLong = findColumnIndex(headerRow, HEADER_ALIASES.dateLong);
             const delayCols = extractDelayColumns(headerRow);
@@ -133,7 +135,9 @@ export default function AnalysisTab() {
                             depPort: idxDepPort !== -1 ? row[idxDepPort] : "", 
                             arrPort: idxArrPort !== -1 ? row[idxArrPort] : "",
                             std: idxStd !== -1 ? row[idxStd] : "", 
-                            atd: idxAtd !== -1 ? row[idxAtd] : "", 
+                            atd: idxAtd !== -1 ? row[idxAtd] : "",
+                            sta: idxSta !== -1 ? row[idxSta] : "",
+                            ata: idxAta !== -1 ? row[idxAta] : "",
                             delayCode: code, delayTimeVal: time,
                             remark: idxRemark !== -1 ? row[idxRemark] : "",
                             desc: matchedCode.desc,

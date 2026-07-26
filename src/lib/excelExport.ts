@@ -68,7 +68,7 @@ export const exportToExcelWithLogo = async (processedData: any[]) => {
   titleRow.font = { size: 16, bold: true, color: { argb: 'FFD52B1E' } }; // Official Pegasus Red Headline
   worksheet1.addRow([]);
 
-  const headers = ["TARİH", "VARDİYA", "AMİR", "UÇUŞ NO", "KALKIŞ", "VARIŞ", "STD", "ATD", "GECİKME KODU", "SÜRE (dk)", "AÇIKLAMA", "CREW REMARKS"];
+  const headers = ["TARİH", "VARDİYA", "AMİR", "UÇUŞ NO", "KALKIŞ", "VARIŞ", "STD", "ATD", "STA", "ATA", "GECİKME KODU", "SÜRE", "CREW TRAC. REMARK"];
   const headerRow = worksheet1.addRow(headers);
   
   headerRow.eachCell((cell) => {
@@ -79,8 +79,16 @@ export const exportToExcelWithLogo = async (processedData: any[]) => {
   });
 
   processedData.forEach((row, index) => {
+    // Süreyi HH:MM formatına çevir
+    const mins = row.delayTimeVal || 0;
+    const hh = String(Math.floor(mins / 60)).padStart(2, '0');
+    const mm = String(mins % 60).padStart(2, '0');
+    const sureStr = `${hh}:${mm}`;
+    
     const dataRow = worksheet1.addRow([
-      row.date, row.shift, row.chief || 'DİĞER GECİKMELER', row.flight, row.depPort, row.arrPort, row.std, row.atd, row.delayCode, row.delayTimeVal, row.remark, row.crewRemark || ''
+      row.date, row.shift, row.chief || 'DİĞER GECİKMELER', row.flight, row.depPort, row.arrPort, 
+      row.std, row.atd, row.sta || '', row.ata || '', 
+      row.delayCode, sureStr, row.crewRemark || ''
     ]);
     
     const isEven = index % 2 === 0;
@@ -95,14 +103,14 @@ export const exportToExcelWithLogo = async (processedData: any[]) => {
              cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFEBF5FB' } }; // AliceBlue
         }
 
-        if ([1, 2, 4, 7, 8, 9, 10].includes(colNumber)) {
+        if ([1, 2, 4, 5, 6, 7, 8, 9, 10, 11, 12].includes(colNumber)) {
             cell.alignment = { vertical: 'middle', horizontal: 'center' };
         }
     });
 
     // Special formal coloring for Delay Code and Time
-    const delayCell = dataRow.getCell(9);
-    const delayTimeCell = dataRow.getCell(10);
+    const delayCell = dataRow.getCell(11);
+    const delayTimeCell = dataRow.getCell(12);
     delayCell.font = { bold: true, color: { argb: 'FF990000' } }; 
     delayTimeCell.font = { bold: true, color: { argb: 'FF990000' } }; 
     
@@ -114,9 +122,9 @@ export const exportToExcelWithLogo = async (processedData: any[]) => {
   });
 
   worksheet1.columns = [
-    { width: 14 }, { width: 14 }, { width: 25 }, { width: 14 },
-    { width: 10 }, { width: 10 }, { width: 8 }, { width: 8 },
-    { width: 18 }, { width: 14 }, { width: 45 }, { width: 50 }
+    { width: 14 }, { width: 10 }, { width: 25 }, { width: 12 },
+    { width: 8 }, { width: 8 }, { width: 8 }, { width: 8 },
+    { width: 8 }, { width: 8 }, { width: 16 }, { width: 8 }, { width: 55 }
   ];
 
   // ============================================
