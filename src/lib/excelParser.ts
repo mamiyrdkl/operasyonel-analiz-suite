@@ -163,10 +163,11 @@ export function parseDelayTime(raw: any): number {
 
 /**
  * Gecikme kodunu ayarlardaki kodlarla eşleştir (tüm sekmeler aynı mantığı kullanır)
- * 1. Tam eşleşme: "64B" === "64B"
- * 2. Excel kodu ayar kodunun başlangıcı: Excel "64" → Ayar "64B" ✓
- * 3. Ayar kodu Excel kodunun başlangıcı: Ayar "64B" → Excel "64BXYZ" ✓  
- * 4. Sayısal prefix eşleşmesi: Excel "64" → Ayar "64B" (sayısal kısım aynı)
+ * Havacılık gecikme kodu formatı: 2-3 rakam + opsiyonel 1 harf (ör: 64, 64B, 94A, 95)
+ * Eşleşme: aynı sayısal kategorideki kodlar eşleşir
+ * Örnek: Excel "64" ↔ Ayar "64B" ✓ (ikisinin de kategorisi "64")
+ * Örnek: Excel "94A" ↔ Ayar "94" ✓ (ikisinin de kategorisi "94")
+ * Örnek: Excel "37" ↔ Ayar "64B" ✗ (farklı kategori)
  */
 export function matchDelayCode(code: string, delayCodes: { code: string; desc: string }[]): { code: string; desc: string } | null {
     if (!code) return null;
@@ -175,23 +176,17 @@ export function matchDelayCode(code: string, delayCodes: { code: string; desc: s
     const exact = delayCodes.find(c => c.code === code);
     if (exact) return exact;
     
-    // 2. Excel kodu ayar kodunun başlangıcı (Excel'de "64", ayarda "64B")
-    const prefixMatch = delayCodes.find(c => c.code.startsWith(code) && code.length >= 2);
-    if (prefixMatch) return prefixMatch;
+    // 2. Sayısal kategori eşleşmesi
+    // Kodun başındaki rakamları çıkar (ör: "64B" → "64", "94A" → "94", "95" → "95")
+    const codeCategory = code.match(/^(\d{2,3})/);
+    if (!codeCategory) return null;
+    const codeNum = codeCategory[1];
     
-    // 3. Ayar kodu Excel kodunun başlangıcı (ayarda "64", Excel'de "64B")
-    const startsMatch = delayCodes.find(c => code.startsWith(c.code) && c.code.length >= 2);
-    if (startsMatch) return startsMatch;
+    const categoryMatch = delayCodes.find(c => {
+        const settingCategory = c.code.match(/^(\d{2,3})/);
+        if (!settingCategory) return false;
+        return settingCategory[1] === codeNum;
+    });
     
-    // 4. Sayısal prefix eşleşmesi: sadece rakam kısmı aynı mı?
-    const codeNum = code.replace(/[^0-9]/g, '');
-    if (codeNum.length >= 2) {
-        const numMatch = delayCodes.find(c => {
-            const settingNum = c.code.replace(/[^0-9]/g, '');
-            return settingNum === codeNum;
-        });
-        if (numMatch) return numMatch;
-    }
-    
-    return null;
+    return categoryMatch || null;
 }
