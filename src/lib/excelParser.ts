@@ -163,30 +163,10 @@ export function parseDelayTime(raw: any): number {
 
 /**
  * Gecikme kodunu ayarlardaki kodlarla eşleştir (tüm sekmeler aynı mantığı kullanır)
- * Havacılık gecikme kodu formatı: 2-3 rakam + opsiyonel 1 harf (ör: 64, 64B, 94A, 95)
- * Eşleşme: aynı sayısal kategorideki kodlar eşleşir
- * Örnek: Excel "64" ↔ Ayar "64B" ✓ (ikisinin de kategorisi "64")
- * Örnek: Excel "94A" ↔ Ayar "94" ✓ (ikisinin de kategorisi "94")
- * Örnek: Excel "37" ↔ Ayar "64B" ✗ (farklı kategori)
+ * SADECE tam eşleşme: ayarlarda tanımlı olmayan kodlar analize dahil EDİLMEZ
+ * Örnek: Ayarlarda "95, 95A, 95B, 95C, 95D" var → "95H" eşleşMEZ
  */
 export function matchDelayCode(code: string, delayCodes: { code: string; desc: string }[]): { code: string; desc: string } | null {
     if (!code) return null;
-    
-    // 1. Tam eşleşme
-    const exact = delayCodes.find(c => c.code === code);
-    if (exact) return exact;
-    
-    // 2. Sayısal kategori eşleşmesi
-    // Kodun başındaki rakamları çıkar (ör: "64B" → "64", "94A" → "94", "95" → "95")
-    const codeCategory = code.match(/^(\d{2,3})/);
-    if (!codeCategory) return null;
-    const codeNum = codeCategory[1];
-    
-    const categoryMatch = delayCodes.find(c => {
-        const settingCategory = c.code.match(/^(\d{2,3})/);
-        if (!settingCategory) return false;
-        return settingCategory[1] === codeNum;
-    });
-    
-    return categoryMatch || null;
+    return delayCodes.find(c => c.code === code) || null;
 }
