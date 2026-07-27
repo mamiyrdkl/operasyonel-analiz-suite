@@ -105,12 +105,10 @@ export default function YearlyAnalysisTab() {
           console.log(`\n[Schedule] ====== "${sheetName}" (${rawData.length} satır) ======`);
 
           // Ay/Yıl tespiti
-          let monthYear = detectMonthYear(sheetName, file.name, rawData);
+          let monthYear = detectMonthYear(sheetName, file.name, rawData, sheetIdx, wb.SheetNames.length);
           if (!monthYear) {
-            const cy = new Date().getFullYear();
-            monthYear = wb.SheetNames.length === 1
-              ? { month: new Date().getMonth(), year: cy }
-              : { month: sheetIdx % 12, year: cy };
+            console.log(`[Schedule] ⚠ Ay tespit edilemedi! Sayfa: "${sheetName}"`);
+            return; // Bu sayfayı atla
           }
           const { month, year } = monthYear;
           console.log(`[Schedule] → ${MONTH_NAMES[month]} ${year}`);
@@ -233,7 +231,7 @@ export default function YearlyAnalysisTab() {
   };
 
   // Ay ve yıl tespiti: Sayfa adı, dosya adı veya içerikten
-  const detectMonthYear = (sheetName: string, fileName: string, rawData: any[][]): { month: number; year: number } | null => {
+  const detectMonthYear = (sheetName: string, fileName: string, rawData: any[][], sheetIdx: number, totalSheets: number): { month: number; year: number } | null => {
     const turkishMonths: Record<string, number> = {
       'OCAK': 0, 'ŞUBAT': 1, 'SUBAT': 1, 'MART': 2, 'NİSAN': 3, 'NISAN': 3,
       'MAYIS': 4, 'HAZİRAN': 5, 'HAZIRAN': 5, 'TEMMUZ': 6, 'AĞUSTOS': 7, 'AGUSTOS': 7,
@@ -246,12 +244,11 @@ export default function YearlyAnalysisTab() {
 
     const tryParse = (text: string): { month: number; year: number } | null => {
       const upper = text.toLocaleUpperCase('tr-TR').trim();
-      // "OCAK 2026" veya "2026 OCAK" veya "01.2026" gibi
+      // "OCAK 2026" veya "2026 OCAK" gibi
       for (const [name, idx] of Object.entries(turkishMonths)) {
         if (upper.includes(name)) {
           const yearMatch = upper.match(/(20\d{2})/);
           if (yearMatch) return { month: idx, year: parseInt(yearMatch[1]) };
-          // Yıl yoksa mevcut yıl
           return { month: idx, year: new Date().getFullYear() };
         }
       }
@@ -266,11 +263,11 @@ export default function YearlyAnalysisTab() {
 
     // 1. Sayfa adından
     let result = tryParse(sheetName);
-    if (result) return result;
+    if (result) { console.log(`[Schedule] Ay tespit: Sayfa adı "${sheetName}" → ${MONTH_NAMES[result.month]} ${result.year}`); return result; }
 
     // 2. Dosya adından
     result = tryParse(fileName);
-    if (result) return result;
+    if (result) { console.log(`[Schedule] Ay tespit: Dosya adı "${fileName}" → ${MONTH_NAMES[result.month]} ${result.year}`); return result; }
 
     // 3. İlk 10 satırdan
     for (let r = 0; r < Math.min(10, rawData.length); r++) {
@@ -279,9 +276,19 @@ export default function YearlyAnalysisTab() {
       for (const cell of row) {
         if (cell) {
           result = tryParse(String(cell));
-          if (result) return result;
+          if (result) { console.log(`[Schedule] Ay tespit: Hücre satır ${r} → ${MONTH_NAMES[result.month]} ${result.year}`); return result; }
         }
       }
+    }
+
+    // 4. Gün sayısından ay tahmini: sayfadaki gün sütunlarının max değerine bak
+    // Bu en son çare — 12 sayfalı dosyalarda sayfa sırasını kullan
+    if (totalSheets >= 11 && totalSheets <= 13) {
+      // 12 sayfalı Excel: her sayfa bir ay (Ocak=0, ..., Aralık=11)
+      const month = sheetIdx % 12;
+      const year = new Date().getFullYear();
+      console.log(`[Schedule] Ay tespit: 12 sayfalı dosya, sayfa sırası ${sheetIdx} → ${MONTH_NAMES[month]} ${year}`);
+      return { month, year };
     }
 
     return null;
