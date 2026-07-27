@@ -293,35 +293,14 @@ export default function YearlyAnalysisTab() {
     const schedule = chiefScheduleRef.current;
     if (schedule.length === 0) return '';
     
-    const [flightYear, flightMonthStr, flightDayStr] = dateIso.split('-');
-    const flightMonth = parseInt(flightMonthStr); // 01-12
-    const monthDay = `-${flightMonthStr}-${flightDayStr}`; // "-05-25"
-    const dayOnly = `-${flightDayStr}`; // "-25"
-
-    // 1. Tam eşleşme: tarih + vardiya
+    // SADECE tam eşleşme: tarih + vardiya
+    // Gecikme hangi gün hangi vardiyada olduysa, o gün o vardiyada çalışan amir atanır
     const exact = schedule.find(e => e.date === dateIso && e.shift === shift);
     if (exact) return exact.chief;
-    
-    // 2. Aynı ay-gün + vardiya (yıl farklı olabilir)
-    const monthDayShift = schedule.find(e => e.date.endsWith(monthDay) && e.shift === shift);
-    if (monthDayShift) return monthDayShift.chief;
-    
-    // 3. Aynı ay-gün (vardiya farklı olabilir)
-    const monthDayOnly = schedule.find(e => e.date.endsWith(monthDay) && e.shift !== 'OFF');
-    if (monthDayOnly) return monthDayOnly.chief;
-    
-    // 4. Sadece gün + vardiya (herhangi ayda)
-    const dayShift = schedule.find(e => e.date.endsWith(dayOnly) && e.shift === shift);
-    if (dayShift) return dayShift.chief;
-    
-    // 5. Sadece gün (herhangi ayda, herhangi vardiya)
-    const dayAny = schedule.find(e => e.date.endsWith(dayOnly) && e.shift !== 'OFF');
-    if (dayAny) return dayAny.chief;
 
-    if (findChiefDebugCount.current < 5) {
+    if (findChiefDebugCount.current < 10) {
       findChiefDebugCount.current++;
-      console.log(`[FindChief] Eşleşmedi: ${dateIso} / ${shift}`);
-      console.log(`[FindChief] Schedule:`, schedule.slice(0, 3).map(e => `${e.date}|${e.shift}|${e.chief}`));
+      console.log(`[FindChief] Eşleşmedi: ${dateIso} / ${shift} — schedule'da bu tarih+vardiya yok`);
     }
     return '';
   };
