@@ -12,6 +12,7 @@ import DelayTrackingTab from '@/components/DelayTrackingTab';
 import CrewConnectionTab from '@/components/CrewConnectionTab';
 import PortalScreen from '@/components/PortalScreen';
 import SettingsModal from '@/components/SettingsModal';
+import { SettingsProvider } from '@/lib/useSettings';
 
 export type AppType = 'PORTAL' | 'ANALYSIS_SUITE' | 'HOTEL' | 'CHECK_IN' | 'DELAY_TRACKING' | 'CREW_CONNECTION';
 
@@ -22,16 +23,19 @@ export default function DashboardPage() {
 
   if (currentApp === 'PORTAL') {
     return (
-       <PortalScreen 
-          onSelectApp={(app) => {
-             setCurrentApp(app);
-             if (app === 'ANALYSIS_SUITE') setActiveTab('analysis');
-          }} 
-       />
+      <SettingsProvider>
+        <PortalScreen 
+           onSelectApp={(app) => {
+              setCurrentApp(app);
+              if (app === 'ANALYSIS_SUITE') setActiveTab('analysis');
+           }} 
+        />
+      </SettingsProvider>
     );
   }
 
   return (
+    <SettingsProvider>
     <main className="flex h-screen w-full bg-slate-50 text-slate-800 font-sans antialiased overflow-hidden">
       {/* SIDEBAR COMPONENT */}
       <Sidebar 
@@ -69,5 +73,6 @@ export default function DashboardPage() {
       {isAdminModalOpen && <SettingsModal onClose={() => setIsAdminModalOpen(false)} />}
 
     </main>
+    </SettingsProvider>
   );
 }

@@ -241,56 +241,52 @@ export default function YearlyAnalysisTab() {
       'JANUARY': 0, 'FEBRUARY': 1, 'MARCH': 2, 'APRIL': 3, 'JUNE': 5,
       'JULY': 6, 'AUGUST': 7, 'SEPTEMBER': 8, 'OCTOBER': 9, 'NOVEMBER': 10, 'DECEMBER': 11
     };
-
     const tryParse = (text: string): { month: number; year: number } | null => {
       const upper = text.toLocaleUpperCase('tr-TR').trim();
-      // "OCAK 2026" veya "2026 OCAK" gibi
       for (const [name, idx] of Object.entries(turkishMonths)) {
         if (upper.includes(name)) {
-          const yearMatch = upper.match(/(20\d{2})/);
-          if (yearMatch) return { month: idx, year: parseInt(yearMatch[1]) };
-          return { month: idx, year: new Date().getFullYear() };
+          const ym = upper.match(/(20\d{2})/);
+          return { month: idx, year: ym ? parseInt(ym[1]) : new Date().getFullYear() };
         }
       }
-      // Sayısal: "01/2026", "01-2026", "01.2026"
-      const numMatch = upper.match(/(\d{1,2})[.\-/](\d{4})/);
-      if (numMatch) {
-        const m = parseInt(numMatch[1]) - 1;
-        if (m >= 0 && m <= 11) return { month: m, year: parseInt(numMatch[2]) };
-      }
+      const nm = upper.match(/(\d{1,2})[.\-/](\d{4})/);
+      if (nm) { const m = parseInt(nm[1]) - 1; if (m >= 0 && m <= 11) return { month: m, year: parseInt(nm[2]) }; }
       return null;
     };
 
-    // 1. Sayfa adından
+    // 1. SAYFA ADINDAN (her sayfa kendi adını taşır — en güvenilir)
     let result = tryParse(sheetName);
-    if (result) { console.log(`[Schedule] Ay tespit: Sayfa adı "${sheetName}" → ${MONTH_NAMES[result.month]} ${result.year}`); return result; }
+    if (result) { console.log(`[Schedule] Ay: sayfa adı "${sheetName}" → ${MONTH_NAMES[result.month]} ${result.year}`); return result; }
 
-    // 2. Dosya adından
+    // 2. ÇOK SAYFALI DOSYA → sayfa sırasını kullan (dosya adı TÜM sayfalara aynı ayı verir!)
+    if (totalSheets >= 2) {
+      // Hücre içeriğinden dene (her sayfanın kendi başlık satırı olabilir)
+      for (let r = 0; r < Math.min(8, rawData.length); r++) {
+        const row = rawData[r];
+        if (!row) continue;
+        for (const cell of row) {
+          if (cell) { result = tryParse(String(cell)); if (result) { console.log(`[Schedule] Ay: hücre R${r} "${sheetName}" → ${MONTH_NAMES[result.month]} ${result.year}`); return result; } }
+        }
+      }
+      // Hücrede bulunamadı → sayfa sırasına göre (12 sayfa = 12 ay)
+      const month = sheetIdx % 12;
+      const year = new Date().getFullYear();
+      console.log(`[Schedule] Ay: sıra ${sheetIdx}/${totalSheets} → ${MONTH_NAMES[month]} ${year}`);
+      return { month, year };
+    }
+
+    // 3. TEK SAYFALI → dosya adından
     result = tryParse(fileName);
-    if (result) { console.log(`[Schedule] Ay tespit: Dosya adı "${fileName}" → ${MONTH_NAMES[result.month]} ${result.year}`); return result; }
+    if (result) { console.log(`[Schedule] Ay: dosya adı "${fileName}" → ${MONTH_NAMES[result.month]} ${result.year}`); return result; }
 
-    // 3. İlk 10 satırdan
+    // 4. TEK SAYFALI → hücrelerden
     for (let r = 0; r < Math.min(10, rawData.length); r++) {
       const row = rawData[r];
       if (!row) continue;
       for (const cell of row) {
-        if (cell) {
-          result = tryParse(String(cell));
-          if (result) { console.log(`[Schedule] Ay tespit: Hücre satır ${r} → ${MONTH_NAMES[result.month]} ${result.year}`); return result; }
-        }
+        if (cell) { result = tryParse(String(cell)); if (result) { console.log(`[Schedule] Ay: hücre R${r} → ${MONTH_NAMES[result.month]} ${result.year}`); return result; } }
       }
     }
-
-    // 4. Gün sayısından ay tahmini: sayfadaki gün sütunlarının max değerine bak
-    // Bu en son çare — 12 sayfalı dosyalarda sayfa sırasını kullan
-    if (totalSheets >= 11 && totalSheets <= 13) {
-      // 12 sayfalı Excel: her sayfa bir ay (Ocak=0, ..., Aralık=11)
-      const month = sheetIdx % 12;
-      const year = new Date().getFullYear();
-      console.log(`[Schedule] Ay tespit: 12 sayfalı dosya, sayfa sırası ${sheetIdx} → ${MONTH_NAMES[month]} ${year}`);
-      return { month, year };
-    }
-
     return null;
   };
 
